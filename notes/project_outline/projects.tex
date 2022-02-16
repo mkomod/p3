@@ -1,0 +1,159 @@
+\documentclass{beamer}
+\usepackage{amsmath}
+\usetheme{CambridgeUS}
+% \usetheme{Boadilla}
+
+\author{}
+\title{Outline for Upcoming Projects}
+\date{\today}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\vs}[1]{
+    \vspace{#1pt}
+
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{frame}{Outline}
+    \tableofcontents
+\end{frame}
+
+% Project #1 Probabilistic CCA
+\section{Probabilistic CCA}
+\begin{frame}{PCCA. Background}
+Simpler to begin with probabilistic PCA
+\begin{equation}
+\begin{aligned}
+    X | Z \sim &\ N(WZ + \mu, \Sigma) \\
+    Z \sim &\ N(0, I_{d})
+\end{aligned}
+\end{equation}
+where $W \in \R^{p \times d}, Z \in \R^{d}, \Sigma \in \R^{p \times p}, \mu \in \R^{p}$ and $I_d$ is $d \times d$ identity.
+\vs{10}
+In turn probabilistic CCA
+\begin{equation}
+\begin{aligned}
+    X_1 | Z \sim &\ N(W_1 Z + \mu_1, \Sigma_1) \\
+    X_2 | Z \sim &\ N(W_2 Z + \mu_2, \Sigma_2) \\
+    Z \sim &\ N(0, I_d) 
+\end{aligned}
+\end{equation}
+where $Z \in \R^{d}, W_j \in \R^{p_j \times d}, \mu_j \in \R^{p_j}, \Sigma_j \in \R^{p_j \times p_j}$ for $j=1,2$.
+\end{frame}
+
+\begin{frame}{PCCA. Background cont.}
+Issues with probabilistic PCA and in turn probabilistic CCA,
+\begin{itemize}
+    \item Label switching / non-identifiability when running MCMC.
+    \item Difficulties with interpretation.
+\end{itemize}
+\vs{10}
+Some positives from the probabilistic framing,
+\begin{itemize}
+    \item Generative model.
+    \item Latent variables $Z$ can be used for visualization.
+    \item EM algorithms (at least for PPCA) can be very fast.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{PCCA. Objectives and next steps}
+What do we want out of a method?
+\begin{itemize}
+    \item Visualization
+    \item Variable selection
+\end{itemize}
+\end{frame}
+
+
+% Project #2
+\section{Group-sparse spike-and-slab regression}
+\begin{frame}{Group-sparse Regression (GSR). Background}
+Regression framework with,
+\begin{equation}
+    y = X\beta + \epsilon
+\end{equation}
+where $\beta = (\beta_1, \dots, \beta_p)^\top \in \R^p$, $X \in \R^{n \times p}$, $y \in \R^{n}$ and $\epsilon$ is a noise term. 
+\vs{20}
+Define the groups, $G_k = \{ G_{k_1}, \dots, G_{k_p} \}$ for $k=1,\dots,M$ to be disjoint sets of indices, such that $ \bigcup_{k=1}^M G_k = \{1, \dots, p \}$.
+\end{frame}
+
+\begin{frame}{Group-sparse Regression. Background cont.}
+Patterns of sparsity include:
+\vs{4}
+\begin{itemize}
+    \itemsep8pt
+    \item \textbf{Coordinate sparsity}: few coordinate of $\beta$ are non-zero.
+    \item \textbf{Group sparsity}: few vectors $\beta_{G_k} = (\beta_{G_{k_1}}, \dots, \beta_{G_{k_p}})$ are non-zero.
+    \item \textbf{Sparse-group sparsity}: few vectors $\beta_{G_k} = (\beta_{G_{k_1}}, \dots, \beta_{G_{k_p}})$ are non-zero and the vectors themselves are sparse.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{GSR. Proposal}
+\begin{block}{Project proposal}
+    Variational extension to the group-sparse setting.
+\end{block}
+\vs{10}
+Does this fit our objectives (or would we ideally seek an extension to the sparse group-sparse setting?)
+\end{frame}
+
+\begin{frame}{GSR. Outline}
+\begin{enumerate}
+    \itemsep1em
+    \item Extension of linear model to the group-sparse setting
+    \item Simulations
+    \item Theoretical results?
+    \item Extend to logistic / survival
+\end{enumerate}
+\end{frame}
+
+
+% Project #3
+\section{3D breast cancer imaging data}
+\begin{frame}{3D Breast cancer data (BCD), Background}
+\begin{itemize}
+    \itemsep0.8em
+    \item Eric's group have access to 3D imaging data and tumor class labels
+    \item The project involves using the data to construct a classification model
+    \item The raw  data has been split into 1cm x 1cm x 1cm regions and passed through the lab's radiomics pipeline, giving $K_i = \sum \text{regions}$ realizations for each feature.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{BCD, Background cont.}
+\begin{equation*}
+\begin{matrix}
+    \text{Sample} & & x_1 & x_2 & \dots & x_{p-1} & x_p \\
+		  &&&& \uparrow & \\
+    1 		  &&&& K_1 & \\
+      		  &&&& \downarrow & \\
+		  &&&& \vdots \\
+		  &&&& \uparrow & \\
+    n 		  &&&& K_n & \\
+      		  &&&& \downarrow & \\
+\end{matrix}
+\end{equation*}
+% Each sample $x^{(i)}_{j, k}$
+\end{frame}
+
+\begin{frame}{BCD, Next steps}
+\begin{itemize}
+    \itemsep1em
+    \item Exploratory data analysis
+    \item Literature review for methods dealing with multiple different realizations of the same features for each sample. 
+    \item Model proposals
+\end{itemize}
+\end{frame}
+
+\section{Comments}
+\begin{frame}{Comments}
+\begin{itemize}
+    \itemsep1em
+    \item All project's involve high-dimensional data of some sort.
+    \item Unclear how to proceed with data integration project.
+    \item Can we combine GSR with the Breast cancer dataset?
+\end{itemize}
+\end{frame}
+
+\end{document}
