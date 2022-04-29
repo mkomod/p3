@@ -1,0 +1,18 @@
+\begin{aligned}
+    f(\mu_i; & \mu_{-i}, \sigma, \gamma) :=\
+    \frac{1}{2\sigma^2} \left(
+	(X^\top X)_{ii} (\sigma_i^2 + \mu_i^2) + 
+	\sum_{j \in G_K, j\neq i} (X^\top X)_{ji} \mu_j \mu_i
+    \right) \\
++ &\
+    \frac{1}{\sigma^2} \left(
+	\sum_{j \in G_K^c} (X^\top X)_{ji} \gamma_{J} \mu_j \mu_i -
+	\mu_i \langle y, X_{:i} \rangle   
+    \right)
+-
+    \sum_{j \in G_K} \log{\sigma_j} \\
++ &\
+    \lambda \left( \sum_{j \in G_K} 
+	\sigma_j^2 + \mu_j^2
+    \right)^{1/2} + C
+\end{aligned}
