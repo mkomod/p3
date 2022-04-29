@@ -9,11 +9,11 @@
 \maketitle
 
 \section{Definitions}
-\textbf{Definition} \textit{Kullback-Leibler divergence}. Let $P$ and $Q$ be probability measures on $\Xc$, such that $ P $ is absolutely continuous with respect to $Q$ ($P \ll Q$), then the Kullback-Leibler divergence is defined as,
+\textbf{Definition} \textit{Kullback-Leibler divergence}. Let $Q$ and $P$ be probability measures on $\Xc$, such that $ Q $ is absolutely continuous with respect to $P$ ($Q \ll P$), then the Kullback-Leibler divergence is defined as,
 \begin{equation}\label{eq:kl}
-\KL(P \| Q) = \int_{\Xc} \log \left( \frac{dP}{dQ} \right) dP
+\KL(Q \| P) = \int_{\Xc} \log \left( \frac{dQ}{dP} \right) dQ
 \end{equation}
-where $dP/dQ$ is the Radon-Nikodym derivative of $P$ with respect to $Q$.
+where $dQ/dP$ is the Radon-Nikodym derivative of $Q$ with respect to $P$.
 
 
 \section{Background}
@@ -505,8 +505,8 @@ Substituting these expressions into the previous display gives,
     \right)^{1/2} \\
 - &\
     \frac{\gamma_K m_K}{2} 
-+ 
-    \gamma_K \sum_{j \in G_K} \frac{\mu_j^2}{2 \sigma_j^2}
+% + 
+    % \gamma_K \sum_{j \in G_K} \frac{\mu_j^2}{2 \sigma_j^2}
 + 
     \gamma_K \log \frac{\gamma_K}{\bar{w}}
 + 
@@ -578,16 +578,16 @@ which is upper bounded by
 \begin{equation} \label{eq:mu_gk_upper}
 \begin{aligned}
     \frac{1}{2\sigma^2} 
-    \mu_{G_K}^\top X_{G_K}^\top X_{G_K} \mu_{G_K}
+    \| X_{G_K} \mu_{G_K} \|^2
 +
     \frac{1}{\sigma^2} 
     \sum_{J \neq K} 
 	\gamma_J \mu_{G_K}^\top X_{G_K}^\top X_{G_J} \mu_{G_J} 
 -
     \frac{1}{\sigma^2}
-    \langle y, X_{G_K} \mu_{G_K} \rangle \\
+    \langle y, X_{G_K} \mu_{G_K} \rangle
 +
-    \lambda \mu_{G_K}^\top \mu_{G_K} + C
+    \lambda \| \mu_{G_K} \|^2 + C
 \end{aligned}
 \end{equation}
 And in turn \eqref{eq:mu_gk_upper} is minimized by
@@ -604,11 +604,47 @@ As it turns out, updating using \eqref{eq:mu_gk_min} doesn't work that well in p
 
 \subsection{Evidence Lower Bound}
 
-The evidence lower bound is an used both as a goodness of fit measure, but also in assessing the convergence of the model.
-
+The evidence lower bound, acts as a lower bound for the model evidence $\Pi_\D$, and follows from the definition of the KL divergence,
+\begin{align*}
+ & 0 \leq \KL(Q \| \Pi(\cdot | \D)) = \E_Q \left[ \Pi_\D - \ell(\D; \beta) - \log \frac{d\Pi}{dQ} (\beta) \right] \\
+    \implies & \E_Q \left[ \ell(\D; \beta) + \log \frac{d\Pi}{dQ} (\beta) \right] \leq \Pi_\D
+\end{align*}
+Formally, the ELBO is defined as,
 \begin{equation}
-    ...
+   \L(\D) = \E_Q \left[ \ell(\D; \beta) + \log \frac{d\Pi}{dQ}(\beta) \right]
 \end{equation}
+In effect, maximizing the ELBO is equivalent to minimizing $\KL(Q \| \Pi(\cdot | \D)) $, i.e. solving \eqref{eq:optim}. Often the ELBO is used to assess the convergence of co-ordinate ascent algorithms, but can also act as a goodness of fit measure.
+
+For our model the ELBO is given as
+\begin{equation} \label{eq:elbo} 
+\begin{aligned}
+    \L(\D) &= 
+- 
+    \frac{n}{2} \log(2 \pi \sigma^2) 
+- 
+    \frac{1}{2\sigma^2} \left( \| y \|^2  + \sum_{i=1}^p \sum_{j=1}^p (X^\top X)_{ji} \E_Q \left[ \beta_j \beta_i \right] \right)\\
++& 
+    \sum_{K=1}^M \bigg(  
+\frac{1}{\sigma^2} \gamma_K \langle y, X_{G_K} \mu_{G_K} \rangle
++
+    \frac{\gamma_K}{2} \sum_{j \in G_K} \left( \log( 2 \pi \sigma_j^2) \right)
++
+    \gamma_K \log(C_K)
++ 
+    \frac{\gamma_K m_K}{2} \\
++ &
+    \gamma_K m_K \log (\lambda)
+-
+    \E_Q \left[ \I_{z_K =1} \lambda \| \beta_{G_K} \| \right]
+-
+    \gamma_K \log \frac{\gamma_K}{\bar{w}}
+-
+    (1-\gamma_K) \log \frac{1 - \gamma_K}{1 - \bar{w}}
+\bigg)
+\end{aligned}
+\end{equation}
+where the expectation $\E_Q \left[ \beta_i \beta_j \right]$ is defined earlier. Given $\E_Q \left[ \I_{\{z_K = 1\}} \lambda \| \beta_{G_K} \| \right] $ does not have a closed form expression, Monte-Carlo integration to evaluate it.
+
 
 \newpage
 \bibliography{refs.bib}
