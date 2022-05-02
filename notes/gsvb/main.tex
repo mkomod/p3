@@ -172,7 +172,7 @@ In order to update $\mu_{G_k}$ and $\sigma_{G_k}$ we must assume that the group 
 } %
 where $\tr(\cdot)$ denotes the trace of a matrix and $C$ is a constant term whose value does not depend on $\mu_{G_K}$ or $\sigma_{G_K}$ (and may change line by line).
 
-Consider the matrix $ X^\top X \beta \beta^\top \in \R^{p \times p} $, and denote the $j$th column of $X$ by $X_{:j}$, using the fact that $\left( X^\top X \beta \beta^\top \right)_{ii} = \sum_{j=1}^{p} (X^\top X)_{ji} \beta_j \beta_i $ for $i,j = 1, \dots, p$, we have
+Consider the matrix $ X^\top X \beta \beta^\top \in \R^{p \times p} $, using the fact that $\left( X^\top X \beta \beta^\top \right)_{ii} = \sum_{j=1}^{p} (X^\top X)_{ji} \beta_j \beta_i $ for $i,j = 1, \dots, p$, we have
 \begin{align}
     \E_{Q | z_K = 1} & \left[ 
 	\tr \left( X^\top X \beta \beta^\top \right) 
@@ -573,7 +573,7 @@ where the expectation $\E_Q \left[ \beta_i \beta_j \right]$ is defined earlier. 
 
 \subsection{Updating $\tau$}
 
-As of yet we have not placed a prior on $\tau$ or considered updating $\tau$ as part of our co-ordinate ascent algorithm. This is because, under an independent prior for $\tau^2$ and independent factorization in our mean-field variational family, we can update our existing equations for $\mu_{G_K}, \sigma_{G_K}$, $\gamma_K$ and ELBO to include this modelling assumption.
+As of yet we have not placed a prior on $\tau^2$ or considered updating $\tau^2$ as part of our co-ordinate ascent algorithm. This is because, under an independent prior for $\tau^2$ and independent factorization in our mean-field variational family, we can update our existing equations for $\mu_{G_K}, \sigma_{G_K}$, $\gamma_K$ and ELBO to include this modelling assumption.
 
 To demonstrate, we opt to use an inverse Gamma prior, predominately because it is a popular choice amongst practitioners \citep{Browne2006}. Formally, we have,
 \begin{equation}
@@ -586,7 +586,7 @@ Extending our prior \eqref{eq:prior} to include this modelling assumption for $\
 \end{equation}
 Similarly, extending our variational family with respect to $\tau^2$, we have,
 \begin{equation}
-    \Q' = \{ \Gamma^{-1}(\tau^2; a, b) : a > 0, b > 0 \} \times \Q
+    \Q' = \{ \Gamma^{-1}(\tau^2; a', b') : a' > 0, b' > 0 \} \times \Q
 \end{equation}
 where we denote,
 \begin{equation}
@@ -596,14 +596,123 @@ where we denote,
 Given these extension, our original optimization problem \eqref{eq:opt} is extended to be
 \begin{equation}
     \E_{Q'} \left[ -\ell(\D; \beta) + \log \frac{dQ'}{d\Pi'} \right] = 
-    \E_{Q'} \left[ -\ell(\D; \beta) + \log \frac{dQ}{d\Pi} + \log \frac{d\Gamma^{-1}}{d \Gamma^{-1}}\right]
+    \E_{Q'} \left[ -\ell(\D; \beta) + \log \frac{dQ}{d\Pi} + \log \frac{d\Gamma^{-1}(a', b')}{d \Gamma^{-1}(a, b)}(\tau^2)\right]
 \end{equation}
 Consequently, when deriving the new update equations for $\mu_{G_K}, \sigma_{G_K}$ and $\gamma_K$, this new term $ \E [ \log \frac{d\Gamma^{-1}}{d\Gamma^{-1}} ] $ is a constant. Therefore, we need only replace all occurrences of $1/\tau^2$ in our old update equations with $\E_{\Gamma^{-1}} [ 1 / \tau^2 ] $. Regarding the ELBO we do the same, however we also include the term $ \E_{\Gamma^{-1}} [ \log \frac{d\Gamma^{-1}}{d\Gamma^{-1}}] $.
 
-Finally, to update the parameters $a'$ and $b'$ we re-write as a function of $a'$ and $b'$,
-\begin{equation}
-    \E_{Q'} \left[ -\ell(\D; \beta) + \log \frac{dQ'}{d\Pi'} \right]
+Finally, to update the parameters $a'$ and $b'$ we re-write \eqref{eq:opt} as a function of $a'$ and $b'$,
+\begin{align*}
+    \E_{Q'} & \left[ -\ell(\D; \beta) + \log \frac{dQ'}{d\Pi'} \right]
+=  
+    \E_{Q'} \left[
+-
+    \ell(\D; \beta)
++   
+    \log \frac{d\Gamma^{-1}(a', b')}{d \Gamma^{-1}(a, b)}(\tau^2)\right] 
++
+    C \\  
+= &\
+\E_{Q'} \left[ 
+    \frac{n}{2}\log(\tau^2) 
++ 
+    \frac{1}{2\tau^2} \| y - X \beta \|^2 
++
+    (a - a') \log(\tau^2)
++
+    \frac{b' - b}{\tau^2}
+\right] + C \\
+= &\
+\E_{Q'} \left[ 
+    \left( \frac{n}{2} + a - a' \right) \log(\tau^2) 
++ 
+    \frac{1}{2\tau^2} \left( \| y \|^2
+    - 2 \langle y, X \beta \rangle
+    + \| X \beta \|^2
+    \right)
++
+    \frac{b' - b}{\tau^2}
+\right] + C \\  
+= &\
+\E_{\Gamma^{-1}} \left[ 
+    \left( \frac{n}{2} + a - a' \right) \log(\tau^2) 
++
+    \frac{b' - b}{\tau^2}
+\right] \\
++ &\ 
+    \E_{\Gamma^{-1}} \left[ \frac{1}{2\tau^2} \right]
+    \left( \| y \|^2 
+    - 2 \langle y, X \E_Q \left[ \beta \right] \rangle
++  \sum_{i=1}^p \sum_{j=1}^p (X^\top X)_{ji} \E_Q \left[ \beta_j \beta_i \right]
+    \right)
++ C \\  
+= &\
+    \left( \frac{n}{2} + a - a' \right) \left( \log(b') + \kappa(a') \right)
++
+    a' - \frac{a'b}{b'}
+    \\
++ &\ 
+    \frac{a'}{2b'}
+    \left( \| y \|^2 
+- 
+    2 \sum_{K=1}^M \gamma_{G_K} \langle y, X_{G_K} \mu_{G_K} \rangle
++  
+    \sum_{i=1}^p \sum_{j=1}^p (X^\top X)_{ji} \E_Q \left[\beta_j \beta_i \right]
+    \right) 
++ C
+\end{align*}
+Where we have used the fact $\E_{\Gamma^2{-1}} [ \log(\tau^2) ] =  \log(b') + \kappa(a') $ and $\E_{\Gamma^{-1}} [ 1 / \tau^2 ] = a' / b' $, where $\kappa(a')$ is the digamma function. Writing the previous display as a function of $a'$ we have
+\begin{equation} \label{eq:a_update}
+\begin{aligned}
+    & \left( \frac{n}{2} + a - a' \right) \kappa(a')
++
+    a' - \frac{a'b}{b'}
++  \\
+&
+    \frac{a'}{2b'}
+    \left( \| y \|^2 
+- 
+    2 \sum_{K=1}^M \gamma_{G_K} \langle y, X_{G_K} \mu_{G_K} \rangle
++  
+    \sum_{i=1}^p \sum_{j=1}^p (X^\top X)_{ji} \E_Q \left[\beta_j \beta_i \right]
+    \right) 
++ C
+\end{aligned}
 \end{equation}
+Similarly, for $b'$ we have,
+\begin{equation} \label{eq:b_opt}
+\begin{aligned}
+    & \left( \frac{n}{2} + a - a' \right) \log(b')
+- 
+    \frac{a'b}{b'}
++  \\
+&
+    \frac{a'}{2b'}
+    \left( \| y \|^2 
+- 
+    2 \sum_{K=1}^M \gamma_{G_K} \langle y, X_{G_K} \mu_{G_K} \rangle
++  
+    \sum_{i=1}^p \sum_{j=1}^p (X^\top X)_{ji} \E_Q \left[\beta_j \beta_i \right]
+    \right) 
++ C
+\end{aligned}
+\end{equation}
+As there is no closed form minimizer of \eqref{eq:a_update} optimization routines can be used, whereas the minimizer of \eqref{eq:b_opt} is given by,
+\begin{equation*}
+    b'_{\min} = 
+\frac{a'}{2}
+\frac{n/2 +a - a'}
+{
+    \| y \|^2 
+- 
+    2 \sum_{K=1}^M \gamma_{G_K} \langle y, X_{G_K} \mu_{G_K} \rangle
+-
+    2b
++  
+    \sum_{i=1}^p \sum_{j=1}^p (X^\top X)_{ji} \E_Q \left[\beta_j \beta_i \right]
+}
+\end{equation*}
+
+
 
 \newpage
 \section{Simulation study}
