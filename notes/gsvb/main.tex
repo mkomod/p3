@@ -840,4 +840,53 @@ which we notice does not depend on the other parameters and in turn can be used 
 
 
 
+\section{MCMC sampler}
+
+We construct a Gibbs sampler to sample from the posterior distribution. To begin, we note that the likelihood can be expressed as,
+\begin{equation}
+    p(\D | \beta, z, \tau^2) = \prod \phi \left(y_i; \sum_{k = 1}^M z_k \langle x_{G_k}, \beta_{G_k} \rangle, \tau^2 \right)
+\end{equation}
+In turn, we can re-write our prior as,
+\begin{equation}
+\begin{aligned}
+    \beta_{G_k} \overset{\text{ind}}{\sim} &\ \Psi(\beta_{G_k}; \lambda) \\
+z_k | \theta_k \overset{\text{ind}}{\sim} &\ \text{Bernoulli}(\theta_k) \\
+\theta_k \overset{\text{iid}}{\sim} &\ \text{Beta}(a_0, b_0)
+\end{aligned}
+\end{equation}
+Finally, recall our prior on $\xi = \tau^2$, is
+\begin{equation}
+    \xi \sim \Gamma^{-1}(\xi; a, b)
+\end{equation}
+which has density $ \frac{b^a}{\Gamma(a)} \left( \frac{1}{\xi} \right)^{a + 1} \exp\left( -\frac{\beta}{x} \right)$.
+
+To sample form the posterior we:
+\begin{enumerate}
+    \itemsep0em
+    \item Initialize $\beta^{(i)}, z^{(i)}, \theta^{(i)}, \xi^{(i)}$
+    \item For $i = 1, \dots, N$
+    \begin{enumerate}
+	\item For $k = 1, \dots, M$
+	\begin{enumerate}
+	    \item Sample $\theta^{(i)}_{k} \overset{\text{iid.}}{\sim} \text{Beta}(a_0, b_0)$
+	\end{enumerate}
+	\item For $k = 1, \dots, M$
+	\begin{enumerate}
+	    \item Sample $z^{(i)}_{k} \overset{\text{ind.}}{\sim} \text{Bernoulli}(p_k)$
+	    where
+	    \begin{equation}
+		p_k = \frac
+		{p(z_k = 1 | \D, \beta, \theta, \xi)}
+		{p(z_k = 1 | \D, \beta, \theta, \xi) + p(z_k = 0 | \D, \beta, \theta, \xi)}
+	    \end{equation}
+	\end{enumerate}
+	\item For $k = 1, \dots, M$
+	\begin{enumerate}
+	    \item Sample $ \beta_{G_k}^{(i)} \sim p(\beta_{G_k} | \D, z, \beta^{(i-1)}, \xi)$
+	\end{enumerate}
+    \item Sample $\xi \overset{\text{iid.}}{\sim} \Gamma^{-1}(a + 0.5n, b + 0.5 \| y - X (\beta \circ z) \| ^2 )$
+    \end{enumerate}
+\end{enumerate}
+
+
 \end{document}
