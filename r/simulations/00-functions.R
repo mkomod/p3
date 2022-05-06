@@ -1,0 +1,349 @@
+library(mvtnorm)
+
+
+# ----------------------------------------
+# Data generating processes
+# ----------------------------------------
+.dgp_base <- function(n, p, gsize, s, b, seed)
+{
+    set.seed(seed)
+
+    if (sum(gsize) == p) {
+	groups <- rep(1:length(gsize), each=gsize)
+    } else {
+	if (p %% gsize != 0) stop("number of groups must be a factor of p")
+	groups <- rep(1:(p/gsize), each=gsize)
+    }
+    
+    active_groups <- sample(1:length(unique(groups)), s)
+
+    if (is.null(b)) {
+	b <- rep(0, p)
+	for (a in active_groups) {
+	    gk <- which(groups == a)
+	    m <- length(gk)
+	    b[gk] <- sample(c(1, -1), m, replace=T) * runif(m, min=1, max=3)
+	}
+    }
+    
+    return(list(groups=groups, active_groups=active_groups, b=b))
+}
+
+
+dgp_diag <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1)
+{
+    res <- .dgp_base(n, p, gsize, s, b, seed)
+
+    # unpack pars
+    corr <- pars[[1]]
+
+    if (corr == 0) {
+	X <- matrix(rnorm(n * p), nrow=n)
+    } else {
+	S <- outer(1:p, 1:p, function(i, j) corr^abs(i - j))
+	X <- mvtnorm::rmvnorm(n, rep(0, p), sigma=S)
+    }
+    
+    j <- which(res$groups %in% res$active_groups)
+    y <- X[ , j] %*% res$b[j] + rnorm(n, sig)
+
+    return(c(res, list(X=X, y=y, seed=seed, sig=sig, corr=corr)))
+}
+
+
+dgp_block <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1)
+{
+    res <- .dgp_base(n, p, gsize, s, b, seed)
+
+    # unpack pars
+    corr <- pars[[1]]
+    block_size <- pars[[2]]
+
+    if (corr == 0) {
+	X <- matrix(rnorm(n * p), nrow=n)
+    } else {
+	X <- matrix(nrow=n, ncol=0)
+	for (block in 1:(p / block_size)) {
+	    S <- matrix(corr, nrow=block_size, ncol=block_size)
+	    diag(S) <- 1
+	    X <- cbind(X, mvtnorm::rmvnorm(n, mean=rep(0, block_size), S))
+	}
+    }
+
+    j <- which(res$groups %in% res$active_groups)
+    y <- X[ , j] %*% res$b[j] + rnorm(n, sig)
+
+    return(c(res, list(X=X, y=y, seed=seed, sig=sig, corr=corr)))
+}
+
+
+# ----------------------------------------
+# Methods (parallelized)
+# ----------------------------------------
+m_run <- function(method, method_par, setting_par, CORES) 
+{
+    # create a new env for cluster
+    e <- list2env(setting_par)
+    e$method_par <- method_par
+    e$.dgp_base <- .dgp_base
+    e$method <- method
+    e$method_summary <- method_summary
+    
+    # init cluster
+    cl <- parallel::makeCluster(getOption("cl.cores", CORES), outfile="")
+    parallel::clusterExport(cl, ls(e, all.names=TRUE), envir=e)
+    on.exit(parallel::stopCluster(cl))
+    
+    # run the method
+    res <- parallel::parSapply(cl, 1:runs, function(run) {
+	d <- dgp(n, p, g, s, pars, seed=run)
+	method(d, method_par)
+    })
+
+    return(t(res))
+}
+
+
+m_gsvb <- function(d, m_par=list(lambda=0.5, a0=1, b0=100))
+{
+    fit.time <- system.time({
+	fit <- gsvb::gsvb.fit(d$y, d$X, d$groups, intercept=TRUE,
+	    lambda=m_par$lambda, a0=m_par$a0, b0=m_par$b0, 
+	    niter=500, track_elbo=FALSE)
+    })
+    
+    active_groups <- rep(0, length(unique(d$groups)))
+    active_groups[d$active_groups] <- 1
+    res <- method_summary(d$b, active_groups, fit$beta_hat[-1], fit$g[-1], 0.5)
+    return(c(unlist(res), unlist(fit.time[3])))
+}
+
+
+m_spsl <- function(d, m_par=list(lambda=0.5, a0=1, b0=100, 
+    a_t=1e-3, b_t=1e-3, mcmc_samples=10e3))
+{
+    fit.time <- system.time({
+	fit <- spsl::spsl.group_sparse(d$y, d$X, d$groups, lambda=m_par$lambda,
+	    a_0=m_par$a0, b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t,
+	    mcmc_sample=m_par$mcmc_samples)
+    })
+
+    active_groups <- rep(0, length(unique(d$groups)))
+    active_groups[d$active_groups] <- 1
+    res <- method_summary(d$b, active_groups, fit$beta_hat[-1], fit$g[-1], 0.5)
+    return(c(unlist(res), unlist(fit.time[3])))
+}
+
+m_ssgl <- function(d, m_par=list(l0=20, l1=1, a0=1, b0=100)) 
+{
+    fit.time <- system.time({
+	fit <- sparseGAM::SSGL(d$y, d$X, d$X, d$groups, family="gaussian",
+	    lambda0=m_par$l0, lambda1=m_par$l1, a=m_par$a0, b=m_par$b0)
+    })
+
+    active_groups <- rep(0, length(unique(d$groups)))
+    active_groups[d$active_groups] <- 1
+    res <- method_summary(d$b, active_groups, fit$beta, fit$classifications, 0.5)
+    return(c(unlist(res), unlist(fit.time[3])))
+}
+
+
+# ----------------------------------------
+# Method evaluation
+# ----------------------------------------
+method_summary <- function(beta_true, active_groups, beta_hat, 
+    inclusion_prob, threshold) 
+{
+    tpr <- numeric(0)
+    fpr <- numeric(0)
+
+    for (thresh in seq(0, 1, by=0.01)) {
+	tab <- table(inclusion_prob >= thresh, active_groups)
+	if (nrow(tab) == 2) {
+	    TP <- tab[2,2]; FP <- tab[2,1]
+	    FN <- tab[1,2]; TN <- tab[1,1]
+	} else if(all(inclusion_prob >= thresh)) {
+	    TP <- sum(g);   FP <- sum(1 - g)
+	    FN <- 0; 	    TN <- 0
+	} else {
+	    TP <- 0;        FP <- 0
+	    FN <- sum(g);   TN <- sum(1 - g)
+	}
+	tpr <- c(tpr, TP / (TP + FN))
+	fpr <- c(fpr, FP / (TN + FP))
+    }
+
+    # compute the AUC using trapizium int
+    auc <- -sum((tpr[1:100] + tpr[2:101]) / 2 * diff(fpr))
+
+
+    tab <- table(inclusion_prob > threshold, active_groups)
+    if (nrow(tab) == 2) {
+	TP <- tab[2,2]; FP <- tab[2,1]
+	FN <- tab[1,2]; TN <- tab[1,1]
+    } else if(all(inclusion_prob > thresh)) {
+	TP <- sum(g);   FP <- sum(1 - g)
+	FN <- 0;        TN <- 0
+    } else {
+	TP <- 0;        FP <- 0
+	FN <- sum(g);   TN <- sum(1 - g)
+    }
+
+    return(list(
+	acc = (TN + TP) / (TN + TP + FN + FP), 
+	err = (FP + FN) / (TN + TP + FN + FP), 
+	tpr = TP / (TP + FN), 
+	tnr = TN / (TN + FP), 
+	fpr = FP / (TN + FP),
+	ppv = ifelse(TP + FP == 0, NA, TP / (TP + FP)),
+	fdr = ifelse(TP + FP == 0, NA, FP / (TP + FP)),
+	auc=auc,
+	FPR=fpr,
+	TPR=tpr,
+	l1 = sum(abs(beta_true - beta_hat)),
+	l2 = sqrt(sum((beta_true - beta_hat)^2))
+    ))
+}
+
+
+# Compute the coverage
+# method_coverage <- function(fit, d, a=0.05, threshold=0.5, conditional=FALSE, 
+# 	mcmc=FALSE)
+# {
+#     if (mcmc) {
+# 	ci <- mcmc.credible_interval(fit, a, conditional=conditional)
+#     } else {
+# 	ci <- svb.credible_interval(fit, a, conditional=conditional)
+#     }
+#     l <- ci[ , 1]
+#     u <- ci[ , 2]
+#     dirac <- ci[ , 3]
+
+#     coverage <- (((l <= d$beta) & (d$beta <= u)) | ((d$beta == 0) & (dirac == T)))
+#     bs <- d$beta != 0
+
+#     return(list(
+# 	coverage.n0 = mean(coverage[bs]),
+# 	length.n0 = mean(u[bs] - l[bs]),
+# 	coverage.0 = mean(coverage[!bs]),
+# 	length.0 =  mean(u[!bs] - l[!bs])
+#     ))
+# }
+
+
+# ----------------------------------------
+# Misc
+# ----------------------------------------
+# import an environment variable ex: cores <- d("CORES", 8)
+read.env <- function(evar, default) 
+{
+    if(Sys.getenv(evar) != "") as(Sys.getenv(evar), class(default)) else default
+}
+
+
+# # compute the credible intervals
+# svb.credible_interval <- function(fit, a=0.05, conditional=FALSE)
+# {
+#     credible.interval <- sapply(1:length(fit$g), function(i) {
+# 	g <- fit$g[i]
+# 	m <- fit$m[i]
+# 	s <- fit$s[i]
+	
+# 	if (conditional) {
+# 	    return(qnorm(c(a/2, 1-a/2), m, s))
+# 	}
+
+# 	if (!conditional) {
+# 	    if (g > 1 - a) {
+# 		# compute the interval that contains 1 - a.g of the mass
+# 		# i.e. if g = 0.97 then the interval needs to be wider to
+# 		# contain 95% of the total mass
+# 		a.g <- 1 - (1-a)/g
+# 		interval <- qnorm(c(a.g/2, 1-a.g/2), m, s)
+# 		contains.dirac <- FALSE
+		
+# 		if (interval[1] <= 0 && interval[2] >= 0) {
+# 		    # if interval contains Dirac mass it needs to be smaller
+# 		    interval <- qnorm(c(a.g/2 + (1-g)/2, 1 - a.g/2 - (1-g)/2), m, s)
+# 		    contins.dirac <- TRUE
+# 		}
+
+# 		return(c(lower=interval[1], upper=interval[2], 
+# 			 contains.dirac=contains.dirac))
+# 	    } else if (g < a) {
+# 		# if the spike contains (1-a)% of the mass then we take 
+# 		# the Dirac mass at 0
+# 		return(c(lower=0, upper=0, contains.dirac=T))
+# 	    } else {
+# 		# will always contain the Dirac
+# 		# so we remove the density accounted for by the
+# 		# Dirac mass from the interval
+# 		interval <- qnorm(c(a/2 + (1-g)/2, 1-a/2 -(1-g)/2), m, s)
+
+# 		return(c(lower=interval[1], upper=interval[2], 
+# 			contains.dirac=TRUE))
+# 	    }
+# 	}
+#     })
+
+#     return(t(credible.interval))
+# }
+
+
+# # compute the credible intervals
+# mcmc.credible_interval <- function(fit, a=0.05, conditional=FALSE, burnin=1e3)
+# {
+#     p <- ncol(fit$b)
+
+#     credible.interval <- sapply(1:length(fit$g), function(i) {
+# 	g <- fit$g[i]	
+
+# 	if (conditional) {
+# 	    m <- fit$b[i, burnin:p]
+# 	    z <- !!fit$z[i, burnin:p]
+# 	    m <- m[z]
+# 	    f <- density(m)
+# 	    cdf <- ecdf(m)
+# 	    return(quantile(cdf, c(a/2, 1 - a/2)))
+# 	}
+
+# 	if (!conditional) {
+# 	    if (g > 1 - a) {
+# 		# Slab contains 1 - a of mass
+# 		a.g <- 1 - (1-a)/g
+# 		m <- fit$b[i, burnin:p]
+# 		z <- !!fit$z[i, burnin:p]
+# 		m <- m[z]
+# 		f <- density(m)
+# 		cdf <- ecdf(m)
+# 		interval <- quantile(cdf, c(a.g/2, 1 - a.g/2))
+# 		contains.dirac <- FALSE
+		
+# 		if (interval[1] <= 0 && interval[2] >= 0) {
+# 		    # if interval contains Dirac mass it needs to be smaller
+# 		    interval <- quantile(cdf, c(a.g/2+(1-g)/2, 1-a.g/2-(1-g)/2))
+# 		    contins.dirac <- TRUE
+# 		}
+
+# 		return(c(lower=interval[1], upper=interval[2], 
+# 			 contains.dirac=contains.dirac))
+# 	    } else if (g < a) {
+# 		# Dirac contains 1 - a of mass
+# 		return(c(lower=0, upper=0, contains.dirac=T))
+# 	    } else {
+# 		# will always contain the Dirac
+# 		m <- fit$b[i, burnin:p]
+# 		z <- !!fit$z[i, burnin:p]
+# 		m <- m[z]
+# 		f <- density(m)
+# 		cdf <- ecdf(m)
+# 		interval <- quantile(cdf, c(a/2 +(1-g)/2, 1 - a/2 - (1-g)/2))
+
+# 		return(c(lower=interval[1], upper=interval[2], 
+# 			 contains.dirac=TRUE))
+# 	    }
+# 	}
+#     })
+
+#     return(t(credible.interval))
+# }
