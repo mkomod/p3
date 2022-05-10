@@ -42,8 +42,8 @@ m <- list(
 	m_ssgl   # SSGL (SpSL Group LASSO)
     ),
     p=list(
-	list(lambda=1, a0=1, b0=p/g),
-	list(lambda=1, a0=1, b0=p/g, a_t=1e-3, b_t=1e-3, mcmc_samples=10e3),
+	list(lambda=1, a0=1, b0=p/g+1),
+	list(lambda=1, a0=1, b0=p/g+1, a_t=1e-3, b_t=1e-3, mcmc_samples=10e3),
 	list(l0=20, l1=1, a0=1, b0=p/g)
     )
 )
