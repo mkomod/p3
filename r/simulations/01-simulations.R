@@ -6,7 +6,7 @@ source("00-functions.R")
 
 DGP <- read.env("DGP", 1:3)
 SIM <- read.env("SIM", 1)
-MET <- read.env("MET", 1:3)
+MET <- read.env("MET", 3)
 CORES <- read.env("CORES", 2)
 
 
@@ -42,9 +42,9 @@ m <- list(
 	m_ssgl   # SSGL (SpSL Group LASSO)
     ),
     p=list(
-	list(lambda=1, a0=1, b0=p/g+1),
-	list(lambda=1, a0=1, b0=p/g+1, a_t=1e-3, b_t=1e-3, mcmc_samples=10e3),
-	list(l0=20, l1=1, a0=1, b0=p/g)
+	list(lambda=1, a0=1, b0=p/g, a_t=1e-3, b_t=1e-3),
+	list(lambda=1, a0=1, b0=p/g, a_t=1e-3, b_t=1e-3, mcmc_samples=10e3),
+	list(l0=100, l1=1, a0=1, b0=p/g)
     )
 )
 
@@ -63,4 +63,6 @@ for (i in DGP)
 	save(list=c(rname), file=sprintf("../../rdata/simulations/01/%s.RData", rname))
     }
 }
+
+
 
