@@ -107,26 +107,25 @@ m_run <- function(method, method_par, setting_par, CORES)
 
 m_gsvb <- function(d, m_par=list(lambda=0.5, a0=1, b0=100, a_t=1e-3, b_t=1e-3))
 {
-    a <- tryCatch({
+    tryCatch({
+
 	fit.time <- system.time({
 	    fit <- gsvb::gsvb.fit(d$y, d$X, d$groups, intercept=TRUE,
 		lambda=m_par$lambda, a0=m_par$a0, b0=m_par$b0, tau_a0=m_par$a_t,
 		tau_b0=m_par$b_t, niter=500, track_elbo=FALSE)
 	})
-	TRUE
-    }, error=function(e) {
-	cat("error in run: ", d$seed)
-	return(FALSE)
-    })
 
-    if (!a) {
+	active_groups <- rep(0, length(unique(d$groups)))
+	active_groups[d$active_groups] <- 1
+	res <- method_summary(d$b, active_groups, fit$beta_hat[-1], fit$g[-1], 0.5)
+
+	return(c(unlist(res), unlist(fit.time[3])))
+
+    }, error=function(e) 
+    {
+	cat("error in run: ", d$seed)
 	return(rep(NA, 213))
-    }
-    
-    active_groups <- rep(0, length(unique(d$groups)))
-    active_groups[d$active_groups] <- 1
-    res <- method_summary(d$b, active_groups, fit$beta_hat[-1], fit$g[-1], 0.5)
-    return(c(unlist(res), unlist(fit.time[3])))
+    })
 }
 
 
