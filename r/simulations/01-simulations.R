@@ -6,8 +6,8 @@ source("00-functions.R")
 
 DGP <- read.env("DGP", 1:3)
 SIM <- read.env("SIM", 1)
-MET <- read.env("MET", 3)
-CORES <- read.env("CORES", 2)
+MET <- read.env("MET", 1)
+CORES <- read.env("CORES", 20)
 
 
 # ----------------------------------------
