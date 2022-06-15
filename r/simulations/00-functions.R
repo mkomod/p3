@@ -109,7 +109,7 @@ m_gsvb <- function(d, m_par=list(lambda=0.5, a0=1, b0=100, a_t=1e-3, b_t=1e-3))
     fit.time <- system.time({
 	fit <- gsvb::gsvb.fit(d$y, d$X, d$groups, intercept=TRUE,
 	    lambda=m_par$lambda, a0=m_par$a0, b0=m_par$b0, tau_a0=m_par$a_t, 
-	    tau_b0=m_par$t_b, niter=500, track_elbo=FALSE)
+	    tau_b0=m_par$b_t, niter=500, track_elbo=FALSE)
     })
     
     active_groups <- rep(0, length(unique(d$groups)))
@@ -154,6 +154,7 @@ m_ssgl <- function(d, m_par=list(l0=20, l1=1, a0=1, b0=100))
 method_summary <- function(beta_true, active_groups, beta_hat, 
     inclusion_prob, threshold) 
 {
+    g <- beta_true != 0
     tpr <- numeric(0)
     fpr <- numeric(0)
 
