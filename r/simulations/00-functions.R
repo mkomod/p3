@@ -45,7 +45,7 @@ dgp_diag <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1)
     }
     
     j <- which(res$groups %in% res$active_groups)
-    y <- X[ , j] %*% res$b[j] + rnorm(n, sig)
+    y <- X[ , j] %*% res$b[j] + rnorm(n, sd=sig)
 
     return(c(res, list(X=X, y=y, seed=seed, sig=sig, corr=corr)))
 }
@@ -71,7 +71,7 @@ dgp_block <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1)
     }
 
     j <- which(res$groups %in% res$active_groups)
-    y <- X[ , j] %*% res$b[j] + rnorm(n, sig)
+    y <- X[ , j] %*% res$b[j] + rnorm(n, sd=sig)
 
     return(c(res, list(X=X, y=y, seed=seed, sig=sig, corr=corr)))
 }
