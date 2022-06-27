@@ -38,11 +38,13 @@ m <- list(
     # methods
     m=c(
 	m_gsvb,  # GSVB (ours) 
+	m_gsvb,  # GSVB (ours, with non-diagonal covariance)
 	m_spsl,  # SpSL (mcmc)
 	m_ssgl   # SSGL (SpSL Group LASSO)
     ),
     p=list(
-	list(lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3),
+	list(lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, diag_covariance=TRUE),
+	list(lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, diag_covariance=FALSE),
 	list(lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, mcmc_samples=10e3),
 	list(l0=100, l1=1, a0=1, b0=p/g)
     )

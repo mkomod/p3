@@ -105,14 +105,15 @@ m_run <- function(method, method_par, setting_par, CORES)
 }
 
 
-m_gsvb <- function(d, m_par=list(lambda=0.5, a0=1, b0=100, a_t=1e-3, b_t=1e-3))
+m_gsvb <- function(d, m_par=list(lambda=0.5, a0=1, b0=100, a_t=1e-3, b_t=1e-3,
+	diag_covariance=TRUE))
 {
     tryCatch({
-
 	fit.time <- system.time({
-	    fit <- gsvb::gsvb.fit(d$y, d$X, d$groups, intercept=TRUE,
-		lambda=m_par$lambda, a0=m_par$a0, b0=m_par$b0, tau_a0=m_par$a_t,
-		tau_b0=m_par$b_t, niter=500, track_elbo=FALSE)
+	    fit <- gsvb::gsvb.fit(d$y, d$X, d$groups, intercept=TRUE, 
+		diag_covariance=m_par$diag_covariance, lambda=m_par$lambda,
+		a0=m_par$a0, b0=m_par$b0, tau_a0=m_par$a_t, tau_b0=m_par$b_t,
+		niter=500, track_elbo=FALSE)
 	})
 
 	active_groups <- rep(0, length(unique(d$groups)))
