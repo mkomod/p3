@@ -1,0 +1,1379 @@
+\documentclass[12pt]{article}
+\input{settings.tex}
+\input{shorthand.tex}
+
+\title{Group Sparse Variational Bayes}
+\author{}
+\date{}
+
+\renewcommand{\red}[1]{\textcolor{red}{#1}}
+
+\begin{document}
+\maketitle
+
+
+\section{Problem formulation}
+
+\subsection{Setting}
+
+Consider the model,
+\begin{equation} \label{eq:model} 
+    y = \langle x, \beta \rangle + \epsilon
+\end{equation}
+where $y \in \R$ is the response, $x = (x_1, \dots, x_p)^\top \in \R^p$ a feature vector of explanatory variables, $\beta = (\beta_1, \dots, \beta_p)^\top \in \R^p$ the coefficient vector, and $\epsilon$ a noise term. 
+
+Under a \textit{group-sparse} setting, it is assumed that features can be grouped, and that few groups have non-zero coefficient values \citep{Giraud2021}.  Formally, define the groups as $G_k = \{ G_{k,1}, \dots, G_{k, m_k} \}$ for $k=1,\dots,M$ as disjoint sets of indices such that $ \bigcup_{k=1}^M G_k = \{1, \dots, p \}$ and let $G_k^c = \{1,\dots, p \} \setminus G_k$. Further, denote $x_{G_k} = \{x_j : j \in G_k \}$ and $\beta_{G_k} = \{\beta_j : j \in G_k \}$. 
+
+Under the group structure \eqref{eq:model} can be written as:
+\begin{equation}
+    y = \left( \sum_{k=1}^{M} \langle x_{G_k}, \beta_{G_k} \rangle \right) + \epsilon
+\end{equation}
+
+Furthermore we are going to assume the error term $\epsilon \overset{\text{iid.}}{\sim} N(0, \tau^2)$, under which the log-likelihood is given by,
+\begin{align}
+    \ell(\D; \beta) = &\ -\frac{1}{2} \sum_{i=1}^n \left[ 
+	\log(2\pi \tau^2) + \frac{1}{\tau^2} 
+	(y_i - \langle x_i, \beta \rangle)^2
+    \right] \nonumber \\
+    =&\ - \frac{n}{2}\log(2\pi\tau^2) - \frac{1}{2\tau^2} \| y - X \beta \|^2 \label{eq:log-likelihood}
+\end{align}
+where $\D = \{ (y_i, x_i) \}_{i=1}^n, y_i \in \R, x_i \in \R^p,  y = (y_1, \dots, y_n)^\top \in \R^n$ and $X = (x_1, \dots, x_n)^\top \in \R^{n \times p}$.
+
+
+\subsection{Prior}
+
+We consider a group spike-and-slab (GSpSL) prior for the model parameters $\beta$, which has a hierarchical representation,
+\begin{equation}
+\begin{aligned}
+\beta_{G_k} | z_k \overset{\text{ind}}{\sim} &\ z_k \Psi(\beta_{G_k}; \lambda) + (1-z_k) \delta_0(\beta_{G_k}) \\
+z_k | \theta_k \overset{\text{ind}}{\sim} &\ \text{Bernoulli}(\theta_k) \\
+\theta_k \overset{\text{iid}}{\sim} &\ \text{Beta}(a_0, b_0)
+\end{aligned}
+\end{equation}
+for $k=1,\dots,M$, where $\delta_0$ is the multivariate Dirac mass on zero with dimension $m_k = \dim(\beta_k)$, and $\Psi(\beta_{G_k})$ is the multivariate double exponential distribution with density
+\begin{equation} \label{eq:density_mvde}
+    \psi(\beta_{G_k}; \lambda) = C_k \lambda^{m_k} \exp \left( - \lambda \| \beta_{G_k} \| \right)
+\end{equation}
+where $ C_k = \left[ 2^{m_k} \pi^{(m_k -1)/2} \Gamma \left( (m_k + 1) /2 \right) \right]^{-1} $ and $ \| \cdot \| $ is the $\ell_2$-norm. For a visual representation, the density \eqref{eq:density_mvde} for the two-dimensional multivariate double exponential is shown in \Cref{fig:double_exp}.
+\begin{figure}[htp]
+    \centering
+    \includegraphics[width=.9\textwidth]{./figures/de.jpg}
+    \caption{Two dimensional double exponential density with $\lambda=1$.}
+    \label{fig:double_exp}
+\end{figure}
+
+It follows that the prior distribution for $\beta$ is given by,
+\begin{equation} \label{eq:prior} 
+    \Pi(\beta | z) = \bigotimes_{k=1}^{M} \left[ 
+    z_k \Psi(\beta_{G_k}; \lambda) + (1-z_k)\delta_0(\beta_{G_k})
+\right]
+\end{equation}
+where $z = (z_1, \dots, z_M)$ and $\otimes$ is the product measure.
+
+
+\red{
+Regarding $\tau^2$, there are many popular choices that a practitioner may wish to use, for example:
+\begin{itemize}
+    \itemsep0em
+    \item \textit{Locally uniform}, wherein $\tau^2 \sim U(0, 1/\varepsilon)$ for a small positive $\varepsilon$.
+    \item \textit{Inverse-Gamma}, wherein $\tau^2 \sim \Gamma^{-1}(a, b)$, where $\Gamma^{-1}$ denotes an inverse-Gamma distribution with shape $a$ and scale $b$, with a common choice for each being $a=b=\varepsilon$, where $\varepsilon$ is a small positive constant around $0.001$.
+\end{itemize}
+In the meantime, we place do not place a prior on $\tau^2$ and assume it is known.
+}
+
+\subsection{Posterior}
+
+The posterior density is given by,
+\begin{equation} \label{eq:posterior} 
+d\Pi(\beta | \D) = \Pi_D^{-1} e^{\ell(\D; \beta)} d\Pi(\beta)
+\end{equation}
+where $\Pi_\D = \int_{\R^{p}} e^{\ell(\D; \beta)} d\Pi(\beta)$ is a normalization constant and $\ell(\D; \beta)$ is the log-likelihood function. (This isn't exactly correct, we still need to integrate our the $z$ terms and re-write the prior).
+
+
+\subsection{Variational Family}
+
+In turn, our aim is to approximate \eqref{eq:posterior} by a member of a tractable family of distributions, referred to as the variational family. We have chosen the family,
+\begin{equation}
+    \Q = \left\{ Q =  \bigotimes_{k=1}^M \left[ 
+    \gamma_k\ N\left(\mu_{G_k}, \diag( \sigma_{G_k}) \right) + (1-\gamma_k) \delta_0
+\right] \right\}
+\end{equation}
+where $N(\mu, \Sigma)$ denotes the multivariate Normal distribution with mean parameter $\mu$ and covariance $\Sigma$. In turn the variational posterior is given by solving,
+\begin{equation} \label{eq:optim} 
+\tilde{\Pi} = \underset{Q \in \Q}{\argmin}\ \KL\left( Q \| \Pi(\cdot |\D) \right)
+\end{equation}
+and is used in subsequent analysis as a proxy for the true posterior.
+
+
+% ----------------------------------------
+% ----------------------------------------
+% ----------------------------------------
+\section{Co-ordinate ascent algorithm}
+
+Throughout our derivation we exploit the group independence structure within the prior and variational distribution, allowing the Radon-Nikodym derivative of $Q$ with respect to the prior $\Pi$ to be expressed as,
+\begin{equation}
+    \frac{dQ}{d\Pi}(\beta) = \prod_{k=1}^{M} \frac{dQ_k}{d\Pi_k} (\beta_{G_k})
+\end{equation}
+
+Consider, the optimization problem \eqref{eq:optim} and recall the definition of the KL divergence \eqref{eq:kl}, it follows that
+\begin{align}
+    \KL(Q \| \Pi(\cdot | \D)) 
+    = &\ \E_{Q} \left[ \log \frac{dQ}{d\Pi(\dot | \D)} \right] 
+    = \E_Q \left[ \log \frac{\Pi_\D dQ}{e^{\ell(\D; \beta)} d\Pi} \right] \nonumber \\
+    =&\ \E_Q \left[ -\ell(\D; \beta) + \log \frac{dQ}{d\Pi} \right] + \log \Pi_\D \label{eq:opt} 
+\end{align}
+As optimization of the objective \eqref{eq:optim} is invariant to constant terms, to simplify upcoming expressions we write them as $C$ (the value of which may change line by line).
+
+\subsection{Updates of $\mu_{G_k}$ and $\sigma_{G_k}$}
+
+In order to update $\mu_{G_k}$ and $\sigma_{G_k}$ we must assume that the group takes a non-zero value, i.e. $z_k =1$. Hence, %
+{\allowdisplaybreaks
+\begin{align}
+\E_{Q  | z_K = 1} & \left[ 
+    - \ell(\D; \beta) + \log \frac{dQ}{d\Pi}(\beta) 
+\right]  \nonumber \\
+= &\
+    \E_{Q | z_K = 1} \left[ 
+	- \ell(\D; \beta) + \log \prod_{k=1}^M \frac{dQ_k}{d\Pi_k}(\beta_{G_k})
+    \right] \nonumber \\
+= &\
+    \E_{Q | z_K = 1} \left[ 
+	- \ell(\D; \beta) 
+	+ \log \frac{dQ_K}{d\Pi_K}(\beta_{G_K})
+	+ \log \prod_{k \neq K} \frac{dQ_k}{d\Pi_k}(\beta_{G_k})
+    \right] \nonumber \\
+= &\
+    \E_{Q | z_K = 1} \left[ 
+	\frac{1}{2\tau^2} \| y - X \beta \|^2
+	+ \log \frac{dQ_K}{d\Pi_K}(\beta_{G_K})
+    \right] + C \nonumber \\
+= &\
+    \E_{Q | z_K = 1} \left[ 
+	\frac{1}{2\tau^2} \bigg\{ 
+	    \| X \beta \|^2 - 2 \langle y, X\beta \rangle 
+	\bigg\}
+	+ \log \frac{dQ_K}{d\Pi_K}(\beta_{G_K})
+    \right] + C \nonumber \\
+= &\
+    \E_{Q | z_K = 1} \left[ 
+	\frac{1}{2\tau^2} \left\{ 
+	    \tr \left( X^\top X \beta \beta^\top \right) 
+	    - 2 \sum_{k=1}^M \langle y, X_{G_k} \beta_{G_k} \rangle 
+	\right\}
+	+ \log \frac{dQ_K}{d\Pi_K}(\beta_{G_K})
+    \right] + C \nonumber \\
+= &\
+    \E_{Q | z_K = 1} \left[ 
+	\frac{1}{2\tau^2} \tr \left( X^\top X \beta \beta^\top \right) 
+	- \frac{1}{\tau^2} \langle y, X_{G_K} \beta_{G_K} \rangle 
+	+ \log \frac{dQ_K}{d\Pi_K}(\beta_{G_K})
+    \right] + C \label{eq:mu_sigma_1}
+\end{align}
+} %
+where $\tr(\cdot)$ denotes the trace of a matrix and $C$ is a constant term whose value does not depend on $\mu_{G_K}$ or $\sigma_{G_K}$ (and may change line by line).
+
+Consider the matrix $ X^\top X \beta \beta^\top \in \R^{p \times p} $, using the fact that $\left( X^\top X \beta \beta^\top \right)_{ii} = \sum_{j=1}^{p} (X^\top X)_{ji} \beta_j \beta_i $ for $i,j = 1, \dots, p$, we have
+\begin{align}
+    \E_{Q | z_K = 1} & \left[ 
+	\tr \left( X^\top X \beta \beta^\top \right) 
+    \right]
+=
+    \E_{Q | z_K = 1} \left[ 
+	\sum_{i=1}^p \sum_{j=1}^{p} (X^\top X)_{ji} \beta_j \beta_i 
+    \right] \nonumber \\
+=&\
+    \sum_{i=1}^p \sum_{j=1}^{p} (X^\top X)_{ji} 
+    \E_{Q | z_K = 1} \left[ \beta_j \beta_i \right] 
+    \nonumber \\
+=&\
+    \sum_{i \in G_K} \left(
+	\sum_{j=1}^{p} (X^\top X)_{ji} 
+	\E_{Q | z_K = 1} \left[ \beta_j \beta_i \right]
+    \right)
++
+    \sum_{i \in G_K^c} \left(
+	\sum_{j=1}^{p} (X^\top X)_{ji} 
+	\E_{Q | z_K = 1} \left[ \beta_j \beta_i \right] 
+    \right)
+    \nonumber \\
+=&\
+    \sum_{i \in G_K} \left( 
+	\sum_{j \in G_K} (X^\top X)_{ji} 
+	    \E_{Q | z_K = 1} \left[ \beta_j \beta_i \right] 
+	+ 
+	\sum_{j \in G_K^c} (X^\top X)_{ji} 
+	    \E_{Q | z_K = 1} \left[ \beta_j \beta_i \right] 
+    \right ) \nonumber \\
++&\ 
+    \sum_{i \in G_K^c} \left( 
+	\sum_{j \in G_K} (X^\top X)_{ji} 
+	    \E_{Q | z_K = 1} \left[ \beta_j \beta_i \right] 
+	+ 
+	\sum_{j \in G_K^c} (X^\top X)_{ji} 
+	    \E_{Q | z_K = 1} \left[ \beta_j \beta_i \right] 
+    \right ) \nonumber \\
+=&\
+    \sum_{i \in G_K} \left( 
+	\sum_{j \in G_K} (X^\top X)_{ji} 
+	    \E_{Q | z_K = 1} \left[ \beta_j \beta_i \right] 
+	+ 
+	2 \sum_{j \in G_K^c} (X^\top X)_{ji} 
+	    \E_{Q | z_K = 1} \left[ \beta_j \beta_i \right] 
+    \right ) + C \nonumber
+\end{align}
+Consider, $ \E_{Q | z_K = 1} \left[ \beta_j \beta_i \right] $ and note $\cov(\beta_j, \beta_i) = \E\left[ \beta_j \beta_i \right] - \E \left[\beta_j \right] \E \left[ \beta_i \right]$, the previous display results in three cases
+\begin{equation}
+    \E_{Q | z_K = 1} \left[ \beta_j \beta_i \right] = \begin{cases}
+	\sigma_{j}^2 + \mu_{j}^2 	& \quad i,j \in G_K, i=j \\
+	\mu_{j}\mu_{i} 			& \quad i,j \in G_K, i \neq j \\
+	\gamma_J \mu_{j}\mu_{i} 	& \quad i \in G_K, j \in G_J, J \neq K
+    \end{cases}
+\end{equation}
+
+The second term in \eqref{eq:mu_sigma_1} is straightforward and is given as,
+\begin{equation} \label{eq:mu_sigma_term_2}
+    \E_{Q | z_K = 1} \left[ \langle y, X_{G_K} \beta_{G_K} \rangle  \right]
+=   
+    \langle y, X_{G_K} \E_{Q | z_K = 1} \left[ \beta_{G_K} \right] \rangle   
+=
+    \langle y, X_{G_K} \mu_{G_K} \rangle  
+\end{equation}
+
+Finally, the third term in \eqref{eq:mu_sigma_1} is given as,
+\begin{align}
+    \E_{Q | z_K = 1 } & \left[ \log \frac{dQ_K}{d\Pi_K} (\beta_{G_K}) \right]
+    \nonumber \\
+= &\
+    \E_{Q | z_K = 1 } \left[ 
+	\log \frac
+	{\prod_{j \in G_K} \left( 2 \pi \sigma_j^2 \right)^{-1/2} \exp \left\{ -(2\sigma^2_{j})^{-1}(\beta_{j} - \mu_j )^2 \right\}}
+	{C_K \lambda^{m_K} \exp\left( - \lambda \| \beta_{G_K} \| \right)}
+    \right] \nonumber \\
+= &\
+    \E_{Q | z_K = 1 } \left[ 
+	\lambda \| \beta_{G_K} \|
+	- \sum_{j \in G_K} \left( 
+	    \log{\sigma_j} 
+	    + \frac{1}{2\sigma_j^2} (\beta_{j} - \mu_j)^2
+	\right)
+    \right] + C \nonumber \\
+= &\
+    \lambda \E_{Q | z_K = 1 } \left[ 
+	\| \beta_{G_K} \|
+    \right] 
+    - \sum_{j \in G_K} \log{\sigma_j} 
+    - \frac{m_K}{2} 
+    + C 
+    \label{eq:mu_simga_term_3}
+\end{align}
+Evaluating the remaining expectation in \eqref{eq:mu_simga_term_3} is non-trivial, in turn we derive an upper bound using Jensen's inequality,
+\begin{equation} \label{eq:mu_sigma_upper}
+    \E_{Q | z_K = 1 } \left[ 
+	\| \beta_{G_K} \|
+    \right] 
+    % \E_{Q | z_K = 1 } \left[ 
+	% \left( \sum_{j \in G_K} \beta_{j}^2 \right)^{1/2}
+    % \right] 
+    % \nonumber \\
+\leq
+    \left( \sum_{j \in G_K} 
+	\E_{Q | z_K = 1 } \left[ \beta_{j}^2 \right] 
+    \right)^{1/2} 
+=
+    \left( \sum_{j \in G_K} 
+	\sigma_j^2 + \mu_j^2
+    \right)^{1/2} 
+\end{equation}
+Putting these components together gives
+\begin{equation} \label{eq:mu_sigma_main}
+\begin{aligned}
+    \E_{Q  | z_K = 1} & \left[ 
+	- \ell(\D; \beta) + \log \frac{dQ}{d\Pi}(\beta) 
+    \right]  \\
+\leq &\
+    \frac{1}{2\tau^2} 
+    \sum_{i \in G_K} \left( 
+	    (X^\top X)_{ii} (\sigma_i^2 + \mu_i^2)
+	+
+	\sum_{j \in G_K, j\neq i} 
+	    (X^\top X)_{ji} \mu_j \mu_i
+    \right ) \\
++ &\
+    \frac{1}{\tau^2} 
+    \sum_{i \in G_K} \left( 
+    \sum_{j \in G_K^c} (X^\top X)_{ji} 
+	\gamma_{J} \mu_j \mu_i
+    \right )
+-
+    \frac{1}{\tau^2}
+    \langle y, X_{G_K} \mu_{G_K} \rangle   \\
+- &\
+    \sum_{i \in G_K} \log{\sigma_i}
++
+    \lambda \left( \sum_{i \in G_K} 
+	\sigma_i^2 + \mu_i^2
+    \right)^{1/2} + C
+\end{aligned}
+\end{equation}
+
+\subsubsection{Group-wise update for $\mu_{G_K}$}
+
+Re-writing the RHS of \eqref{eq:mu_sigma_main} in terms of $\mu_{G_K}$, we have
+\begin{equation} \label{eq:mu_gk}
+\begin{aligned}
+    \frac{1}{2\tau^2} 
+    \mu_{G_K}^\top X_{G_K}^\top X_{G_K} \mu_{G_K}
++
+    \frac{1}{\tau^2} 
+    \sum_{J \neq K} 
+	\gamma_J \mu_{G_K}^\top X_{G_K}^\top X_{G_J} \mu_{G_J} 
+-
+    \frac{1}{\tau^2}
+    \langle y, X_{G_K} \mu_{G_K} \rangle \\
++
+    \lambda \left( \sigma_{G_K}^\top \sigma_{G_K} + \mu_{G_K}^\top \mu_{G_K} \right)^{1/2} + C
+\end{aligned}
+\end{equation}
+
+\textbf{Insight into the update of $\mu_{G_K}$}
+
+Using the fact that $ \left( \sum_{j \in G_K} \sigma_j^2 + \mu_j^2 \right)^{1/2} \leq 1 + \sum_{j \in G_K} \sigma_j^2 + \mu_j^2 $, which follows from $x \leq 1 + x^2$, we can upper bound \eqref{eq:mu_gk}.
+\begin{equation} \label{eq:mu_gk_upper}
+\begin{aligned}
+    \frac{1}{2\tau^2} 
+    \| X_{G_K} \mu_{G_K} \|^2
++
+    \frac{1}{\tau^2} 
+    \sum_{J \neq K} 
+	\gamma_J \mu_{G_K}^\top X_{G_K}^\top X_{G_J} \mu_{G_J} 
+-
+    \frac{1}{\tau^2}
+    \langle y, X_{G_K} \mu_{G_K} \rangle
++
+    \lambda \| \mu_{G_K} \|^2 + C
+\end{aligned}
+\end{equation}
+And in turn \eqref{eq:mu_gk_upper} is minimized by
+\begin{equation} \label{eq:mu_gk_min}
+    \hat{\mu}_{G_K} = \Xi^{-1} X_{G_K}^\top y - \Xi^{-1} \sum_{J \neq K} \gamma_J X_{G_K}^\top X_{G_J} \mu_{G_J}    
+\end{equation}
+where $\Xi = X_{G_K}^\top X_{G_K} + 2 \lambda \tau^2 I_{m_K}$. 
+
+Let $P := (X_{G_K}^\top X_{G_K} + 2 \lambda \tau^2 I_{m_K})^{-1} X_{G_K}^\top $ and the prediction of $y$ from $\mu_{G_J}$ as $\hat{y}_{G_J} = X_{G_J} \mu_{G_J}$, then we can re-express \eqref{eq:mu_gk_min} as
+\begin{equation}
+\hat{\mu}_{G_K} = P(y - \sum_{J \neq K} \gamma_J \hat{y}_{G_J})
+\end{equation}
+In other words the minimizer $\hat{\mu}_{G_K}$ seeks a vector that explains the remaining signal in $y$ given the signal explained by $\sum_{J \neq K} \gamma_J \hat{y}_{G_J}$, for example, consider the extreme case, $y - \sum_{J \neq K} \gamma_J \hat{y}_{G_J} = 0_n$ (the n-dimensional zero vector), then the resulting minimizer $\hat{\mu}_{G_K} = 0_{m_K}$. 
+
+It turns out, updating using \eqref{eq:mu_gk_min} doesn't work that well in practise, in fact, using optimization routines to minimize \eqref{eq:mu_gk} leads to better results in less time.
+
+\red{We've seen that using a looser upper bound does not work well, Q: how loose it too loose, there is a point at which we move from obtaining a good estimate to one where we obtain a bad one - and this depends on the bound. When does this transition happen?}
+
+\subsubsection{Group-wise update for $\sigma_{G_K}$}
+
+Re-writing the RHS of \eqref{eq:mu_sigma_main} in terms of $\sigma_{G_K}$, we have
+\begin{equation} \label{eq:sig_gk}
+\begin{aligned}
+    \sum_{i \in G_K} \left( 
+    \frac{1}{2\tau^2} 
+	    (X^\top X)_{ii} \sigma_i^2
+-
+    \log{\sigma_i}
+    \right )
++
+    \lambda \left( \sum_{i \in G_K} 
+	\sigma_i^2 + \mu_i^2
+    \right)^{1/2} + C
+\end{aligned}
+\end{equation}
+
+\subsection{Updates for $\gamma_K$}
+
+Similarly for $\gamma_K$ we evaluate the expectation with respect to $Q$, however without conditioning on the group being non-zero.
+{\allowdisplaybreaks
+\begin{align}
+    \E_{Q} & \left[ 
+	- \ell(\D; \beta) + \log \frac{dQ}{d\Pi}(\beta) 
+    \right]  \nonumber \\
+= &\
+    \E_{Q} \left[ 
+	- \ell(\D; \beta) 
+	+ \I_{\{z_K = 1\}} \log \frac{\gamma_K dN_K}{\bar{w} d\Psi_K}(\beta_{G_K}) 
+	+ \I_{\{z_K = 0\}} \log \frac{1 - \gamma_K}{1 - \bar{w}}
+    \right] + C \nonumber \\
+=&\
+    \frac{1}{2\tau^2} 
+    \sum_{i \in G_K} \left( 
+	\sum_{j \in G_K} (X^\top X)_{ji} 
+	    \E_{Q} \left[ \beta_j \beta_i \right] 
+	+ 
+	2 \sum_{j \in G_K^c} (X^\top X)_{ji} 
+	    \E_{Q} \left[ \beta_j \beta_i \right] 
+    \right ) \nonumber \\
+- &\
+    \frac{1}{\tau^2} \langle y, X_{G_K} \E_Q\left[\beta_{G_K} \right] \rangle 
+-
+    \frac{\gamma_K}{2} \sum_{j \in G_K} \log \left( 2 \pi \sigma_j^2 \right)
+-
+    \gamma_K \log(C_K )
+    \nonumber \\
+- &\
+    \gamma_K m_K \log (\lambda) 
++ 
+    \E_{Q} \left[ 
+	\I_{\{z_K=1\}} \left(
+	\lambda \| \beta_{G_K} \|
+	- \sum_{j \in G_K}
+	    \frac{1}{2\sigma_j^2} (\beta_{j} - \mu_j)^2
+	\right)
+    \right]  \nonumber \\ 
++ &\
+    \gamma_K \log \frac{\gamma_K}{\bar{w}}
+    + (1 - \gamma_K) \log \frac{1 - \gamma_K}{1 - \bar{w}}
++ C \nonumber
+\end{align}
+}
+Noting $\E_Q \left[ \beta_{G_K} \right] = \gamma_K \mu_{G_K} $ and
+\begin{equation}
+    \E_{Q} \left[ \beta_j \beta_i \right] = \begin{cases}
+	\gamma_K (\sigma_{j}^2 + \mu_{j}^2) 	& \quad i,j \in G_K, i=j \\
+	\gamma_K \mu_{j}\mu_{i} 		& \quad i,j \in G_K, i \neq j \\
+	\gamma_K \gamma_J \mu_{j}\mu_{i} 	& \quad i \in G_K, j \in G_J, J \neq K
+    \end{cases}
+\end{equation}
+and
+\begin{equation}
+    \E_Q \left[ \I_{\{z_K = 1\}} \| \beta_{G_K} \| \right] = 
+    \gamma_K \E_{N_K} \left[ \| \beta_{G_K} \| \right]
+    \leq \gamma_K \left( \sum_{j \in G_K} \sigma^2_j + \mu^2_j \right)^{1/2}
+\end{equation}
+Substituting these expressions into the previous display gives,
+\begin{equation*}
+\begin{aligned}
+    \E_{Q} & \left[ 
+	- \ell(\D; \beta) + \log \frac{dQ}{d\Pi}(\beta) 
+    \right]  \\
+\leq &\
+    \frac{\gamma_K}{2\tau^2}
+    \sum_{i \in G_K} \left( 
+	    (X^\top X)_{ii} (\sigma_i^2 + \mu_i^2)
+	+
+	\sum_{j \in G_K, j\neq i} 
+	    (X^\top X)_{ji} \mu_j \mu_i
+    \right ) \\
++ &\
+    \frac{\gamma_K}{\tau^2}
+    \sum_{i \in G_K} \left( 
+    \sum_{j \in G_K^c} (X^\top X)_{ji} 
+	\gamma_{J} \mu_j \mu_i
+    \right )
+-
+    \frac{\gamma_K}{\tau^2} \langle y, X_{G_K} \mu_{G_K} \rangle \\
+- &\
+    \frac{\gamma_K}{2} \sum_{j \in G_K} \log \left( 2 \pi \sigma_j^2 \right) 
+-
+    \gamma_K \log(C_K )
+-
+    \gamma_K m_K \log (\lambda) 
++
+    \lambda \gamma_K \left( \sum_{j \in G_K} 
+	\sigma_j^2 + \mu_j^2
+    \right)^{1/2} \\
+- &\
+    \frac{\gamma_K m_K}{2} 
+% + 
+    % \gamma_K \sum_{j \in G_K} \frac{\mu_j^2}{2 \sigma_j^2}
++ 
+    \gamma_K \log \frac{\gamma_K}{\bar{w}}
++ 
+    (1 - \gamma_K) \log \frac{1 - \gamma_K}{1 - \bar{w}}
++ C
+\end{aligned}
+\end{equation*}
+Differentiating the RHS of the previous display with respect to $\gamma_K$, setting to zero and re-arranging gives the update equation for $\gamma_K$, formally,
+\begin{equation} \label{eq:update_gamma} 
+\begin{aligned}
+    \log &\ \frac{\gamma_K}{1-\gamma_K} = 
+    \log \frac{\bar{w}}{1-\bar{w}}
++ 
+    \frac{m_K}{2}  
++
+    \frac{1}{\tau^2} \langle y, X_{G_K} \mu_{G_K} \rangle  \\
++ &\ 
+    \frac{1}{2} \sum_{j \in G_K} \log \left( 2 \pi \sigma_j^2 \right)
++
+    \log(C_K )
++
+    m_K \log (\lambda)
+-
+\Bigg\{ 
+    \lambda \left( \sum_{j \in G_K} 
+	\sigma_j^2 + \mu_j^2
+    \right)^{1/2}  \\
++ &\
+    \frac{1}{2\tau^2}
+    \sum_{i \in G_K} \left( 
+    (X^\top X)_{ii} \sigma_i^2
+    +
+    \sum_{j \in G_K} 
+	(X^\top X)_{ji} \mu_j \mu_i
+    % \right )
++
+    % \frac{1}{\sigma^2}
+    % \sum_{i \in G_K} \left( 
+    2 \sum_{j \in G_K^c} (X^\top X)_{ji} 
+	\gamma_{J} \mu_j \mu_i
+    \right )
+\Bigg\}
+\end{aligned}
+\end{equation}
+
+
+\subsection{Evidence Lower Bound}
+
+The evidence lower bound, acts as a lower bound for the model evidence $\Pi_\D$, and follows from the definition of the KL divergence,
+\begin{align*}
+ & 0 \leq \KL(Q \| \Pi(\cdot | \D)) = \E_Q \left[ \Pi_\D - \ell(\D; \beta) - \log \frac{d\Pi}{dQ} (\beta) \right] \\
+    \implies & \E_Q \left[ \ell(\D; \beta) + \log \frac{d\Pi}{dQ} (\beta) \right] \leq \Pi_\D
+\end{align*}
+Formally, the ELBO is defined as,
+\begin{equation}
+   \L(\D) = \E_Q \left[ \ell(\D; \beta) + \log \frac{d\Pi}{dQ}(\beta) \right]
+\end{equation}
+In effect, maximizing the ELBO is equivalent to minimizing $\KL(Q \| \Pi(\cdot | \D)) $, i.e. solving \eqref{eq:optim}. Often the ELBO is used to assess the convergence of co-ordinate ascent algorithms, but can also act as a goodness of fit measure.
+
+For our model the ELBO is given as
+\begin{equation} \label{eq:elbo} 
+\begin{aligned}
+    \L(\D) &= 
+- 
+    \frac{n}{2} \log(2 \pi \tau^2) 
+- 
+    \frac{1}{2\tau^2} \left( \| y \|^2  + \sum_{i=1}^p \sum_{j=1}^p (X^\top X)_{ji} \E_Q \left[ \beta_j \beta_i \right] \right)\\
++& 
+    \sum_{K=1}^M \bigg(  
+\frac{1}{\tau^2} \gamma_K \langle y, X_{G_K} \mu_{G_K} \rangle
++
+    \frac{\gamma_K}{2} \sum_{j \in G_K} \left( \log( 2 \pi \sigma_j^2) \right)
++
+    \gamma_K \log(C_K)
++ 
+    \frac{\gamma_K m_K}{2} \\
++ &
+    \gamma_K m_K \log (\lambda)
+-
+    \E_Q \left[ \I_{z_K =1} \lambda \| \beta_{G_K} \| \right]
+-
+    \gamma_K \log \frac{\gamma_K}{\bar{w}}
+-
+    (1-\gamma_K) \log \frac{1 - \gamma_K}{1 - \bar{w}}
+\bigg)
+\end{aligned}
+\end{equation}
+where the expectation $\E_Q \left[ \beta_i \beta_j \right]$ is defined earlier. Given $\E_Q \left[ \I_{\{z_K = 1\}} \lambda \| \beta_{G_K} \| \right] $ does not have a closed form expression, Monte-Carlo integration to evaluate it.
+
+\subsection{Updating $\tau$}
+
+As of yet we have not placed a prior on $\tau^2$ or considered updating $\tau^2$ as part of our co-ordinate ascent algorithm. This is because, under any independent prior for $\tau^2$ and independent factorization in the mean-field variational family, we can modify (without major alterations) our existing equations for $\mu_{G_K}, \sigma_{G_K}$, $\gamma_K$ and ELBO to include this modelling assumption.
+
+We opt to use an inverse Gamma prior, predominately because it is a popular choice amongst practitioners \citep{Browne2006}. Formally, we let,
+\begin{equation}
+    \tau^2 \sim \Gamma^{-1}(a, b)
+\end{equation}
+where $\Gamma^{-1}(a, b)$ denotes the inverse Gamma distribution with density $\frac{b^a}{\Gamma(a)}x^{-a-1} e^{-b/x}$. Extending our prior \eqref{eq:prior} to include this modelling assumption for $\tau^2$, we have,
+\begin{equation}
+    \Pi'(\beta, \tau^2) = \Pi(\tau^2) \Pi(\beta) = \Gamma^{-1}(\tau^2; a, b) \Pi(\beta)
+\end{equation}
+Similarly, extending our variational family with respect to $\tau^2$, we have,
+\begin{equation}
+    \Q' = \{ \Gamma^{-1}(\tau^2; a', b') : a' > 0, b' > 0 \} \times \Q
+\end{equation}
+where we denote,
+\begin{equation}
+    Q' = \Gamma^{-1}(\tau^2; a', b') \otimes Q(\beta) \in \Q' 
+\end{equation}
+
+Given these extension, our original optimization problem \eqref{eq:opt} is extended to be
+\begin{equation}
+    \E_{Q'} \left[ -\ell(\D; \beta) + \log \frac{dQ'}{d\Pi'} \right] = 
+    \E_{Q'} \left[ -\ell(\D; \beta) + \log \frac{dQ}{d\Pi} + \log \frac{d\Gamma^{-1}(a', b')}{d \Gamma^{-1}(a, b)}(\tau^2)\right]
+\end{equation}
+Consequently, when deriving the new update equations for $\mu_{G_K}, \sigma_{G_K}$ and $\gamma_K$, this new term $ \E [ \log \frac{d\Gamma^{-1}}{d\Gamma^{-1}} ] $ is a constant and can be ignored. Therefore, we need only replace all occurrences of $1/\tau^2$ in our old update equations with $\E_{\Gamma^{-1}} [ 1 / \tau^2 ] = a'/b' $. Regarding the ELBO we do the same, however we also include the term $ \E_{\Gamma^{-1}(a', b')} [ \log \frac{d\Gamma^{-1}(a', b')}{d\Gamma^{-1}(a, b)}]$ which is given by,
+\begin{equation}
+    a' \log (b') - a \log(b) + \log \frac{\Gamma(a)}{\Gamma(a')} + (a-a')(\log(b') + \kappa(a')) + (b - b')\frac{a'}{b'}
+\end{equation}
+noting $\E_{\Gamma^{-1}} [ \log(\tau^2) ] =  \log(b') + \kappa(a') $  where $\kappa(\cdot)$ is the digamma function. 
+
+To update $a'$ and $b'$ we follow a similar procedure as before, writing \eqref{eq:opt} as a function of $a'$ and $b'$ and then finding the minimum,
+\begin{align}
+    \E_{Q'} & \left[ -\ell(\D; \beta) + \log \frac{dQ'}{d\Pi'} \right]
+=  
+    \E_{Q'} \left[
+-
+    \ell(\D; \beta)
++   
+    \log \frac{d\Gamma^{-1}(a', b')}{d \Gamma^{-1}(a, b)}(\tau^2)\right] 
++
+    C \nonumber \\
+= &\
+\E_{Q'} \left[ 
+    \frac{n}{2}\log(\tau^2) 
++ 
+    \frac{1}{2\tau^2} \| y - X \beta \|^2 
+\right]
++
+\E_{\Gamma^{-1}} \left[
+    \log \frac{d\Gamma^{-1}(a', b')}{d \Gamma^{-1}(a, b)}(\tau^2)
+\right] + C \nonumber \\
+= &\
+\E_{\Gamma^{-1}} \left[
+    \frac{1}{2\tau^2}
+\right]
+\E_{Q} \left[ 
+ \| y - X \beta \|^2 
+\right]
++
+\E_{\Gamma^{-1}} \left[
+    \frac{n}{2}\log(\tau^2) 
++ 
+    \log \frac{d\Gamma^{-1}(a', b')}{d \Gamma^{-1}(a, b)}(\tau^2)
+\right] + C \nonumber
+\end{align}
+\begin{equation} \label{eq:update_a_b} 
+\begin{aligned}
+= & \
+\frac{a'}{2 b'} \left( \| y \|^2 
+    - 2 \langle y, X \E_Q \left[ \beta \right] \rangle
++  \sum_{i=1}^p \sum_{j=1}^p (X^\top X)_{ji} \E_Q \left[ \beta_j \beta_i \right]
+\right)
++ a' \log (b')  \\
+- &\
+\log \Gamma(a') + \left( \frac{n}{2} + a-a' \right)(\log(b') + \kappa(a')) + (b - b')\frac{a'}{b'} + C
+\end{aligned}
+\end{equation}
+\red{Note: finding the values of $a'$ and $b'$ that minimizes \eqref{eq:update_a_b} needs to be done jointly. This is contrary to the outline of CAVI where parameters are optimized independently of one another. We've seen this before when optimizing $\mu_{G_k}$. For instance, optimizing each element of $\mu_{G_k}$ independently of the rest does not lead to a stable algorithm.
+}
+
+\red{
+Q: why is it the case that some parameters need to be optimized jointly and others do not? And when do they need to be optimized together or can be optimized separately. \\ 
+H: maybe this has something to do with how the first moment is defined, i.e. the first moment of $\tau^2$ is given by $b' / (a' - 1)$ which depends on both $a'$ and $b'$. \\
+Q: does this hold for certain types of distributions? i.e. do exponential family distributions with multiple parameter means need to have those parameters optimized jointly?
+}
+
+% Writing the previous display as a function of $a'$ we have
+% \begin{equation} \label{eq:a_update}
+% \begin{aligned}
+% & \frac{a'}{2b'} 
+%     \left( \| y \|^2 
+% - 
+%     2 \sum_{K=1}^M \gamma_{G_K} \langle y, X_{G_K} \mu_{G_K} \rangle
+% +  
+%     \sum_{i=1}^p \sum_{j=1}^p (X^\top X)_{ji} \E_Q \left[\beta_j \beta_i \right]
+%     \right) 
+% \\
+% - &\ \log \Gamma(a') + \left( \frac{n}{2} + a - a' \right)\kappa(a') + (b - b')\frac{a'}{b'} + C
+% \end{aligned}
+% \end{equation}
+% Similarly, for $b'$ we have,
+% \begin{equation} \label{eq:b_opt}
+% \begin{aligned}
+% & \frac{a'}{2b'} 
+%     \left( \| y \|^2 
+% - 
+%     2 \sum_{K=1}^M \gamma_{G_K} \langle y, X_{G_K} \mu_{G_K} \rangle
+% +  
+%     \sum_{i=1}^p \sum_{j=1}^p (X^\top X)_{ji} \E_Q \left[\beta_j \beta_i \right]
+%     \right) 
+% \\
+% + &\ \left( \frac{n}{2} + a \right)\log(b') + \frac{ba'}{b'} + C
+% \end{aligned}
+% \end{equation}
+% As there is no closed form minimizer of \eqref{eq:a_update} optimization routines must be used to find the minimum, whereas the minimizer of \eqref{eq:b_opt} is given by,
+% \begin{equation*}
+%     b'_{\min} = 
+% \frac{a'}{2}
+% \frac{n/2 +a - a'}
+% {
+%     \| y \|^2 
+% - 
+%     2 \sum_{K=1}^M \gamma_{G_K} \langle y, X_{G_K} \mu_{G_K} \rangle
+% -
+%     2b
+% +  
+%     \sum_{i=1}^p \sum_{j=1}^p (X^\top X)_{ji} \E_Q \left[\beta_j \beta_i \right]
+% }
+% \end{equation*}
+
+
+\subsection{Implementation details}
+
+Until convergence repeat the following steps:
+\begin{enumerate}
+    \item For $k=1,\dots,M$
+    \begin{enumerate}
+	\item Update $\mu_{G_k} \leftarrow \underset{\mu_{G_k} \in \R^{m_k}}{\argmin}\ f(\mu_{G_k}; \mu_{G_k^c}, \sigma, \gamma, \tau)$
+	\item Update $\sigma_{G_k} \leftarrow \underset{\sigma_{G_k} \in \R^{m_k}}{\argmin}\ g(\mu_{G_k}; \mu_{G_k^c}, \sigma, \gamma, \tau)$
+	\item Update $\gamma_k \leftarrow \text{sigmoid} \ h(\mu_{G_k}; \mu_{G_k^c}, \sigma, \gamma, \tau)$
+	\item Update $a', b'$ minimizers of \eqref{eq:update_a_b}
+    \end{enumerate}
+\end{enumerate}
+
+The algorithm can be sensitive to initialization, in our implementation we used the group LASSO from the package \texttt{gglasso} to initialize $\mu$. To initialize $\sigma_k$ 
+
+\section{Extension of Variational Family}
+
+We would like to capture the dependence within the groups. We therefore consider variational family
+\begin{equation}
+    \Q_D = \left\{ Q_D =  \bigotimes_{k=1}^M \left[ 
+    \gamma_k\ N\left(\mu_{G_k}, \Sigma_k \right) + (1-\gamma_k) \delta_0 \right] \right\}
+\end{equation}
+where $\Sigma_k \in \R^{m_k \times m_k}$ is a positive semi-definite matrix. We proceed as before deriving the update equations for 
+
+\subsection{Updates for $\mu_{G_k}$ and $\Sigma_{k}$}
+
+We follow a similar process as before, recall from \eqref{eq:mu_sigma_1}, we have:
+{\allowdisplaybreaks
+\begin{align}
+& \E_{Q_D  | z_K = 1}  \left[ 
+    - \ell(\D; \beta) + \log \frac{dQ_D}{d\Pi}(\beta) 
+\right]  \nonumber \\
+& = 
+    \E_{Q_D | z_K = 1} \left[ 
+	\frac{1}{2\tau^2} \tr \left( X^\top X \beta \beta^\top \right) 
+	- \frac{1}{\tau^2} \langle y, X_{G_K} \beta_{G_K} \rangle 
+	+ \log \frac{dQ_{D,K}}{d\Pi_K}(\beta_{G_K})
+    \right] + C \label{eq:QD_mu_sigma}
+\end{align}
+}
+Approaching each term separately using previous results we have,
+\begin{align}
+    \E_{Q_D | z_K = 1} & \left[ 
+	\tr \left( X^\top X \beta \beta^\top \right) 
+    \right] \\
+=&\
+    \sum_{i \in G_K} \left( 
+	\sum_{j \in G_K} (X^\top X)_{ji} 
+	    \E_{Q | z_K = 1} \left[ \beta_j \beta_i \right] 
+	+ 
+	2 \sum_{j \in G_K^c} (X^\top X)_{ji} 
+	    \E_{Q | z_K = 1} \left[ \beta_j \beta_i \right] 
+    \right ) + C \nonumber
+\end{align}
+with
+\begin{equation}
+    \E_{Q | z_K = 1} \left[ \beta_j \beta_i \right] = \begin{cases}
+	\Sigma_{i, j} + \mu_{i} \mu_{j} & \quad i,j \in G_K \\
+	\gamma_J \mu_{j}\mu_{i} 	& \quad i \in G_K, j \in G_J, J \neq K
+    \end{cases}
+\end{equation}
+The middle term is trivial and finally,
+\begin{equation}
+    \E_{Q_D | z_K = 1 } \left[ \log \frac{dQ_K}{d\Pi_K} (\beta_{G_K}) \right]
+    = -\frac{1}{2} \log \det \Sigma_K + \lambda E_{Q_D | z_K = 1} \| \beta_{G_K} \| + C
+\end{equation}
+Using \eqref{eq:mu_sigma_upper} to upper bound the previous display gives the objective function for $\mu_{G_K}$ and $\Sigma_K$. Formally,
+\begin{equation} \label{eq:QD_mu_sigma_obj}
+\begin{aligned}
+    \frac{1}{2\tau^2} 
+    \mu_{G_K}^\top X_{G_K}^\top X_{G_K} \mu_{G_K}
++
+    \frac{1}{2\tau^2} 
+    \tr( X_{G_K}^\top X_{G_K} \Sigma_K)
++
+    \frac{1}{\tau^2} 
+    \sum_{J \neq K} 
+	\gamma_J \mu_{G_K}^\top X_{G_K}^\top X_{G_J} \mu_{G_J} \\
+-
+    \frac{1}{\tau^2}
+    \langle y, X_{G_K} \mu_{G_K} \rangle 
+-	
+    \frac{1}{2} \log \det \Sigma_K 
++
+    \lambda \left( \sum_{i \in G_K} 
+	\sigma_i^2 + \mu_i^2
+    \right)^{1/2} + C
+\end{aligned}
+\end{equation}
+
+\textbf{Restricting the number of free parameters} 
+
+We use similar ideas to those of \citep[pg. 119]{Seeger1999, Opper2009} and show that only $2m_k$ free parameters are needed to describe the optima of \eqref{eq:QD_mu_sigma_obj}. Naively we would expect to need $(m_k + 1)m_k /2 $ for the covariance $\Sigma_K$ and $m_k$ for $\mu_k$. 
+
+To show this, let $\Psi_K = X_{G_K}^\top X_{G_K}$ and $\nu_K = \lambda (\sum_{i \in G_K} \sigma^2_i + \mu^2_i)^{1/2}$, further write,
+\begin{equation}
+    \widetilde{\pi}_K = \frac{\partial \nu_K}{\partial \mu_{G_K}} = 
+    \left( \frac{ \partial \nu_K}{\partial \mu_{G_K, 1}}, \dots, \frac{\partial \nu_K}{\partial \mu_{G_K, m_K}} \right)^\top
+    , \quad 
+    \widetilde{W}_K = \frac{\partial \nu_K}{\partial \Sigma_{K}} = \diag \frac{\partial \nu_K}{\partial \sigma_{G_K, i}^2}
+\end{equation}
+Differentiating \eqref{eq:QD_mu_sigma_obj} with respect to $\mu_{G_k}$ gives
+\begin{equation}
+    \frac{1}{\tau^2} 
+    \Psi_K \mu_{G_K}
++
+    \frac{1}{\tau^2} 
+    \sum_{J \neq K} 
+	\gamma_J X_{G_K}^\top X_{G_J} \mu_{G_J}
+-
+    \frac{1}{\tau^2}
+    X_{G_K}^\top y
++
+    \widetilde{\pi}_K
+\end{equation}
+setting to zero and re-arranging gives
+\begin{equation}  \label{eq:mu_free}
+    \widehat{\mu}_{G_K} = 
+ - \Psi_K^{-1} \left(  \sum_{J \neq K} 
+	\left( \gamma_J X_{G_K}^\top X_{G_J} \mu_{G_J} \right)
+-
+    X_{G_K}^\top y
++
+    \tau^2 \widetilde{\pi}_K \right)
+\end{equation}
+Similarly differentiating \eqref{eq:QD_mu_sigma_obj} wrt. $\Sigma_K$ gives,
+\begin{equation} 
+    \frac{1}{2\tau^2} \Psi_K
+-	
+    \frac{1}{2} \Sigma_K^{-1}
++
+    \widetilde{W}_K
+\end{equation}
+setting to zero and re-arranging gives,
+\begin{equation} \label{eq:sigma_free}
+    \widehat{\Sigma}_K = \left( \tau^{-2} \Psi_K + 2\widetilde{W}_K \right)^{-1}
+\end{equation}
+We see that \eqref{eq:mu_free} and \eqref{eq:sigma_free} depend on $m_K$ free parameters each. This follows for \eqref{eq:sigma_free} since $\widetilde{W}_K$ is a diagonal matrix. Therefore writing, 
+\begin{equation*}
+\mu_{G_K} = -\Psi_K^{-1} \left( \sum_{J\neq K} (\gamma_J X^\top_{G_K} X_{G_J} \mu_{G_J} - X^\top_{G_K} y + \tau^2 \pi_K \right)
+\end{equation*}
+where $\pi_K = (\pi_{K,1}, \dots, \pi_{K, m_K})^\top$, and $\Sigma_K = (\tau^{-1} \Psi_K + \diag(w_K))^{-1}$ where $w_K = (w_{K,1}, \dots, w_{K, m_K})^\top$ allows us to represent the optima in terms of $2m_K$ free parameters. Notably, although the number of free parameters has not increased from the independent to the unconstrained covariance case, optimization of $\Sigma_K$ requires the inversion of an $m_K \times m_K$ matrix, which would be time consuming for large $m_K$ (inversion is $O(m_K^3)$).
+
+To finish things up we need the derivatives with respect to the new free parameters, $\pi_K$ and $w_K$. Denoting the objective in \eqref{eq:QD_mu_sigma} as $f$ we have,
+\begin{align*}
+    \frac{\partial f}{\partial \pi_{K, i}} 
+=&\ \tr \left( \left( \frac{\partial f}{\partial \mu_K} \right)^\top \frac{\partial \mu_K}{\partial \pi_{K, i}} \right) \\
+    =&\ - \tau^{2} \frac{\partial f}{\partial \mu_K}^\top \Psi^{-1}_{K,:i}
+    = -\tau^{2} \Psi^{-1}_{K, i:} \frac{\partial f}{\partial \mu_K}
+\end{align*}
+and therefore
+\begin{equation} \label{eq:QD_pi_grad} 
+    \frac{\partial f}{\partial \pi_{K}} 
+    = \tau^{2} \Psi_K^{-1} \left( \pi_K - \widetilde{\pi}_K \right)
+\end{equation}
+Similarly,
+\begin{align*}
+    \frac{\partial f}{\partial w_{K, i}} 
+=&\ \tr \left( \left( \frac{\partial f}{\partial \Sigma_K} \right)^\top \frac{\partial \Sigma_K}{\partial w_{K,i}} \right) \\
+=&\ \tr \left( - \left(\widetilde{W} - \frac{1}{2}W \right) 
+\Sigma_K \frac{\partial \Sigma_K^{-1}}{\partial w_{K, i}} \Sigma_K  \right) \\
+    =&\ \sum_{j=1}^{m_K} \left(\frac{1}{2}w_{K, j} - \widetilde{W}_{j, j} \right) 
+\Sigma_{K, ij}^2
+\end{align*}
+Hence
+\begin{equation} \label{eq:QD_w_grad} 
+    \frac{\partial f}{\partial w_{K}} = \frac{1}{2} \Sigma_K \circ \Sigma_K \left(w_K - \widetilde{w}_K \right)
+\end{equation}
+where $\widetilde{w}_K = \left(2 \partial \nu / \partial \sigma_{G_K, 1}^2, \dots, 2 \partial \nu / \partial \sigma_{G_K, m_K}^2\right)^\top$.
+
+\red{SF: are we sure that after optimizing for $w_{K, i}$, the optimum ends up being the same as $2\tilde{W}_K$?}
+
+\blue{we've only managed to check this empirically. As it turns out $w_{K, i}$ is (approximately, $\pm 0.001$ on average) the same as $2\tilde{W}_{K, ii}$}
+
+\begin{figure}[htp]
+    \centering
+    \includegraphics[width=\textwidth]{./figures/comp_wopt_Wii.jpg}
+\end{figure}
+
+
+
+
+\subsection{Update of $\gamma_K$}
+
+The update equation for $\gamma_k$ is given by solving,
+\begin{equation} \label{eq:QD_update_gamma} 
+\begin{aligned}
+    \log &\ \frac{\gamma_K}{1-\gamma_K} = 
+    \log \frac{\bar{w}}{1-\bar{w}}
++ 
+    \frac{m_K}{2}  
++
+    \frac{1}{\tau^2} \langle y, X_{G_K} \mu_{G_K} \rangle  \\
++ &\ 
+    \frac{1}{2} \log \det \left( 2 \pi \Sigma_K \right)
++
+    \log(C_K )
++
+    m_K \log (\lambda)
+-
+\Bigg\{ 
+    \lambda \left( \sum_{j \in G_K} 
+	\sigma_j^2 + \mu_j^2
+    \right)^{1/2}  \\
++ &\
+    \frac{1}{2\tau^2}
+    \sum_{i \in G_K} \left( 
+    \sum_{j \in G_K} \left[
+	(X^\top X)_{ii} (\Sigma_{k, ij} + \mu_j \mu_i)
+    \right]
++
+    % \frac{1}{\sigma^2}
+    % \sum_{i \in G_K} \left( 
+    2 \sum_{j \in G_K^c} (X^\top X)_{ji} 
+	\gamma_{J} \mu_j \mu_i
+    \right )
+\Bigg\}
+\end{aligned}
+\end{equation}
+
+\red{initialization is important, particularly for $\mu$, in some cases poor initialization can lead to optimization issues and a lack of convergence}
+
+\subsection{Updates for $a'$ and $b'$}
+
+Updates for $a'$ and $b'$ are essentially the same except the expectation in \eqref{eq:update_a_b}, which is now given by,
+\begin{equation}
+    \E_{Q} \left[ \beta_j \beta_i \right] = \begin{cases}
+	\gamma_K (\Sigma_{i, j} + \mu_{i} \mu_{j}) & \quad i,j \in G_K \\
+	\gamma_K \gamma_J \mu_{j}\mu_{i} 	& \quad i \in G_K, j \in G_J, J \neq K
+    \end{cases}
+\end{equation}
+
+\subsection{ELBO}
+
+Minor changes are also made to the evidence lower bound.
+\begin{equation} \label{eq:QD_elbo} 
+\begin{aligned}
+    \L(\D) &= 
+- 
+    \frac{n}{2} \log(2 \pi \tau^2) 
+- 
+    \frac{1}{2\tau^2} \left( \| y \|^2  + \sum_{i=1}^p \sum_{j=1}^p (X^\top X)_{ji} \E_Q \left[ \beta_j \beta_i \right] \right)\\
++& 
+    \sum_{K=1}^M \bigg(  
+\frac{1}{\tau^2} \gamma_K \langle y, X_{G_K} \mu_{G_K} \rangle
++
+    \frac{\gamma_K}{2} \log( \det (2 \pi \Sigma_K))
++
+    \gamma_K \log(C_K)
++ 
+    \frac{\gamma_K m_K}{2} \\
++ &
+    \gamma_K m_K \log (\lambda)
+-
+    \E_Q \left[ \I_{z_K =1} \lambda \| \beta_{G_K} \| \right]
+-
+    \gamma_K \log \frac{\gamma_K}{\bar{w}}
+-
+    (1-\gamma_K) \log \frac{1 - \gamma_K}{1 - \bar{w}}
+\bigg)
+\end{aligned}
+\end{equation}
+
+
+\newpage
+\section{Extension to binary classification}
+
+Formally, we are going to be modelling a binary response $Y \in \{0, 1 \}$ alongside a feature vector $x \in \R^p$, by using the popular logistic link function wherein,
+\begin{equation}
+    \P(Y = 1 | X = x) = \logistic(x^\top \beta) =  \frac{\exp(x^\top \beta)}{1 + \exp(x^\top \beta)}
+\end{equation}
+where $\beta \in \R^p$ is the coefficient vector.
+
+In a similar fashion as before we let the training data $\D = \{(y_i, x_i)\}_{i=1}^n$ where $y_i \in \{0, 1\}, x_i \in \R^p, y=(y_1, \dots, y_n)^\top$ and $X=(x_1, \dots, x_n)^\top \in \R^{n \times p}$. We are going to assume that the group structure is known. We will be using the same notation introduced earlier for the groups. 
+
+Variational inference for logistic regression requires greater care than the linear counterpart, this is because there is no closed form for the expectation of the log-likelihood under the variational family. Several authors have proposed bounds or approximations to maintain tractability \red{cite a few people e.g. JJ99, KM13 etc.}.
+
+Recently \cite{Depraetere2017a}, compared several different approximations and bounds. Their results highlight that quadratic bounds do not perform well, Taylor series approximations are only accurate in specific settings. They conclude that non-quadratic bounds can perform well. Finally, the authors introduce an approximation based on quasi-Monte Carlo, \red{TODO: define}, and show that the method performs better, albeit slower, in their proposed simulations. Finally, the authors note that a potential avenue for future research would be to improve the variational approximation both in terms of accuracy and computation time. This could be accomplished through tighter bounds or faster approximations. 
+
+In light of this, we propose a non-quadratic bound based on the inequality 
+\begin{equation}
+\log(1 + \exp(x)) \leq \frac{1}{2} \left( x + \sqrt{2 + x^2} \right)
+\end{equation}
+A comparison presented in \Cref{fig:bounds_comparison} indicates the bound is tight, particularly around the origin.
+\begin{figure}[htp]
+    \centering
+    \includegraphics[width=\textwidth]{./figures/bounds.jpg}
+    \caption{Comparison to bound}
+    \label{fig:bounds_comparison}
+\end{figure}
+
+
+\subsection{Co-ordinate ascent update equations}
+
+We begin by writing the log-likelihood,
+\begin{align}
+    \ell(\D, \beta) =&\ \sum_{i=1}^n 
+    y_i \log \left( \frac{ \exp(x_i^\top \beta) }{ 1 + \exp( x_i^\top \beta ) } \right) +
+    (1 - y_i) \log \left( \frac{ 1 }{ 1 + \exp( x_i^\top \beta ) } \right) \nonumber \\
+    =&\ \sum_{i=1}^n  y_i \left( x_i^\top \beta \right) - \log \left(1 + \exp(x_i^\top \beta) \right)
+\end{align}
+And proceed as before, aiming to minimize
+\begin{equation} \label{eq:l_opt_objective} 
+    \E \left[ 
+	- \ell(\D; \beta) + \log \frac{dQ}{d\Pi}(\beta) 
+    \right]
+\end{equation}
+As we've already derived results for the second term in the expectation, our focus falls to the expectation of the negative log-likelihood,
+\begin{equation} \label{eq:l_objective} 
+    \sum_{i=1}^n  
+    \E \left[
+	    \log \left(1 + \exp(x_i^\top \beta) \right) -
+	    y_i \left( x_i^\top \beta \right) 
+    \right]
+\end{equation}
+We note the first term is intractable and therefore propose bounding it using the fact that
+\begin{equation}
+\begin{aligned}
+    \E \left[ \log(1 + \exp(x_i^\top \beta)) \right]
+    \leq &\
+	\E \left[ 
+	    \frac{1}{2} \left( x_i^\top \beta + 
+	    \sqrt{2 + (x_i^\top \beta)^2} \right) 
+	\right] \\
+    \leq &\
+	\frac{1}{2} \left( 
+	    \E \left[ x_i^\top \beta \right] + 
+	    \sqrt{2 + \E \left[(x_i^\top \beta)^2 \right]} 
+	\right)
+\end{aligned}
+\end{equation}
+where the first inequality follows form that fact that $ \log(1 + \exp(x)) \leq \frac{1}{2} \left( x + \sqrt{2 + x^2} \right) $ and the second inequality from Jensens. Hence \eqref{eq:l_objective} is bound by
+\begin{equation}
+    \sum_{i=1}^n
+    \left( \frac{1}{2} - y_i \right) \E \left[ x_i^\top \beta \right] + 
+    \frac{1}{2} \left( 2 + \sum_{j=1}^p \sum_{k=1}^p x_{ij} x_{ik} 
+    \E \left[ \beta_j \beta_k \right] \right)^{1/2}
+\end{equation}
+
+In the meantime, we will be approximating the posterior using the variational family $\Q$ (the independent factorization). Wherein
+\begin{equation}
+    \E_{Q | z_K = 1} \left[ \beta_j \beta_i \right] = \begin{cases}
+	\sigma_{j}^2 + \mu_{j}^2 		& \quad i,j \in G_K, i=j \\
+	\mu_{j}\mu_{i} 				& \quad i,j \in G_K, i \neq j \\
+	\gamma_J \mu_{j} \mu_{i} 		& \quad i \in G_K, j \in G_J, J \neq K \\
+	\gamma_I \gamma_J \mu_{j}\mu_{i} 	& \quad i \in G_I, j \in G_J, I \neq J \neq K \\
+	\gamma_J (\sigma_{j}^2 + \mu_{j}^2) 	& \quad i,j \in G_J, i=j, J \neq K \\
+	\gamma_J \mu_{j}\mu_{i} 		& \quad i,j \in G_K, i \neq j, J \neq K
+    \end{cases}
+\end{equation}
+
+\subsubsection{Updates for $\mu_{G_K}$ and $\sigma_{G_K}$}
+
+Writing \eqref{eq:l_opt_objective} as a function of $\mu_{G_K}$ and $\sigma_{G_K}$ whilst keeping the remaining parameters fixed, gives
+\begin{equation} \label{eq:l_mu_sig_up} 
+\begin{aligned}
+    \E_{Q | z_K = 1} & \Big[ 
+	-  \ell(\D; \beta) + \log \frac{dQ}{d\Pi}(\beta) 
+    \Big]  \\
+\leq &\
+    \sum_{i=1}^n \left[
+	\left( \frac{1}{2} - y_i \right) x_{i, G_K}^\top \mu_{G_K} +
+	\frac{1}{2} \left( 2 + \sum_{j=1}^p \sum_{k=1}^p x_{ij} x_{ik} 
+	\E_{Q | z_K = 1} \left[ \beta_j \beta_k \right] \right)^{1/2} 
+    \right] \\
+- &\
+    \sum_{i \in G_K} \log{\sigma_i}
++
+    \lambda \left( \sum_{i \in G_K} 
+	\sigma_i^2 + \mu_i^2
+    \right)^{1/2} + C
+\end{aligned}
+\end{equation}
+where $C$ is a constant term. Optimizing the surrogate functional in \eqref{eq:l_mu_sig_up} with respect to either $\mu_{G_K}$ or $\sigma_{G_K}$, whilst keeping the other fixed, gives the update equations for $\mu_{G_K}$ and $\sigma_{G_K}$.
+
+
+\subsubsection{Updates for $\gamma_K$}
+
+Finally, for the update equation of $\gamma_K$, we are going to be using the factorization of the variational family to obtain a closed form update. Formally we use the fact that,
+\begin{equation}
+    \E_Q \left[ f(\beta) \right] = 
+	\gamma_K \E_{N_K \otimes Q_{\backslash K}} \left[ f(\beta) \right] +
+	(1-\gamma_K) \E_{\delta_{0, K} \otimes Q_{\backslash K}} \left[ f(\beta) \right]
+\end{equation}
+where $Q_{\backslash K} = \bigotimes_{j \neq K} \left[ \gamma_j N(\mu_{G_K}, \diag(\sigma_{G_K}^2)) + (1-\gamma_K \delta_0 \right]$ for $j=1,\dots,M$, $N_K$ is the Normal component of the $K$th group, $\delta_{0, K}$ is the Dirac mass of the $K$th component, and $f$ is some function of $\beta$.
+
+Writing \eqref{eq:l_opt_objective} as a function of $\gamma_K$ and fixing the remaining parameters we have,
+\begin{equation} \label{eq:l_gamma_up} 
+\begin{aligned}
+    \E_{Q}  \Big[ &
+	-  \ell(\D; \beta) + \log \frac{dQ}{d\Pi}(\beta) 
+    \Big]  \\
+\leq &\
+    \sum_{i=1}^n \Biggl[
+	\left( \frac{1}{2} - y_i \right) \gamma_K x_{i, G_K}^\top \mu_{G_K} 
+	+
+	\frac{\gamma_K}{2} \left( 2 + \sum_{j=1}^p \sum_{k=1}^p x_{ij} x_{ik} 
+	\E_{N_K \otimes Q_{\backslash K}} \left[ \beta_j \beta_k \right] \right)^{1/2}  \\
+	+&\
+	\frac{1 - \gamma_K}{2} \left( 2 + \sum_{j=1}^p \sum_{k=1}^p x_{ij} x_{ik} 
+	\E_{\delta_{0,K} \otimes Q_{\backslash K}} \left[ \beta_j \beta_k \right] \right)^{1/2} 
+    \Biggr]
+-
+    \frac{\gamma_K}{2} \sum_{j \in G_K} \log \left( 2 \pi \sigma_j^2 \right)  \\
+- &\
+    \gamma_K \log(C_K )
+-
+    \gamma_K m_K \log (\lambda) 
++
+    \lambda \gamma_K \left( \sum_{j \in G_K} 
+	\sigma_j^2 + \mu_j^2
+    \right)^{1/2}
+-
+    \frac{\gamma_K m_K}{2}  \\
++ &\
+    \gamma_K \log \frac{\gamma_K}{\bar{w}}
++ 
+    (1 - \gamma_K) \log \frac{1 - \gamma_K}{1 - \bar{w}}
++ C
+\end{aligned}
+\end{equation}
+Differentiating the RHS of the previous display wrt. $\gamma_K$, setting to $0$ and re-arranging gives the update equation for $\gamma_K$,
+\begin{equation}
+\begin{aligned}
+    \log & \frac{\gamma_K}{1 - \gamma_K}
+=
+    \log \frac{\bar{w}}{1 - \bar{w}}
++
+    \frac{m_K}{2}
++
+    \frac{1}{2} \sum_{j \in G_K} \log \left( 2 \pi \sigma_j^2 \right)
++
+    \log(C_K)
+-
+    \lambda \left( \sum_{j \in G_K} 
+	\sigma_j^2 + \mu_j^2
+    \right)^{1/2} \\
++ &\
+    m_K \log (\lambda)
+-
+    \sum_{i=1}^n \Biggl[
+	\left( \frac{1}{2} - y_i \right) x_{i, G_K}^\top \mu_{G_K}
+	+
+	\frac{1}{2} \left( 2 + \sum_{j=1}^p \sum_{k=1}^p x_{ij} x_{ik} 
+	\E_{N_K \otimes Q_{\backslash K}} \left[ \beta_j \beta_k \right] \right)^{1/2} \\
+	- &\
+	\frac{1}{2} \left( 2 + \sum_{j \in G_K^c}^p \sum_{k \in G_K^c}^p x_{ij} x_{ik} 
+	\E_{Q_{\backslash K}} \left[ \beta_j \beta_k \right] \right)^{1/2} 
+    \Biggr]
+\end{aligned}
+\end{equation}
+
+
+
+\newpage
+\section{Simulation study}
+
+\subsection{Simulation design}
+
+Data is simulated for $i=1,\dots,n$ observations, each having a response $y_i \in \R$ and $p$ continuous predictors $x_i \in \R^p$. The response is sampled independently from a Gaussian distribution with mean $\beta_0^\top x_i$ and variance $\sigma^2$, where the true coefficient vector $\beta_0 = (\beta_{0, 1}, \dots, \beta_{0, p})^\top \in \R^p$ contains $s$ non-zero groups each of size $g$. Non-zero elements of $\beta_{0}$ are sampled independently and uniformly from $[-3,-1] \cup [1,3]$. Finally, the predictors are generated from one of \red{\#} settings:
+\begin{itemize}
+    \item \textbf{Setting 1}: $x_i \overset{\text{iid}}{\sim} N(0_p, I_p)$ where $0_p$ is the p-dimension zero vector and $I_p$ the $p\times p$ identity matrix.
+    \item \textbf{Setting 2}: $x_i \overset{\text{iid}}{\sim} N(0, \Sigma)$ where $\Sigma_{ij} = 0.6^{|i - j|}$ for $i,j=1,\dots,p$.
+    \item \textbf{Setting 3}: $x_i \overset{\text{iid}}{\sim} N(0, \Sigma)$  where $\Sigma_{ii} = 1$, $\Sigma_{ij}=0.6$ for $i\neq j$ and $i, j = 50k, \dots, 50(k+1)$ for $k=0,\dots, p/50 -1$ and $\Sigma_{ij} =0$ otherwise.
+\end{itemize}
+
+\subsection{Methods}
+
+Considered so far:
+\begin{itemize}
+    \item \textbf{GSVB} (group sparse variational Bayes -- ours): this is an implementation of
+    \item \textbf{MCMC}: Gibb sampler for the group spike-and-slab prior
+    \item \textbf{SSGL}: Spike-and-slab group LASSO, (similar to the spike-and-slab LASSO) where the multivariate Dirac mass is replaced with a multivariate double exponential distribution. (i.e. this is a continuous mixture), with one density acting as the spike and another the slab.
+\end{itemize}
+
+\red{see Jonathan thesis eq. 4.28 on simulation designs for the group sparse setting}
+
+\subsection{Results}
+
+Methods are comparable. Our method has the fastest runtime, however this may come down to the fact that our method (and the MCMC implementation) is written in C\texttt{++}, whereas GSVB is written in \texttt{R}.
+
+\begin{table}[htp]
+    \centering
+    \input{./tables/comparison.tex}
+    \caption{Companion of Group-sparse Bayesian variable selection methods}
+    \label{tab:bvs_comprison}
+\end{table}
+
+
+\red{TODO, comparison of coverage}
+
+
+\newpage
+
+
+
+
+\newpage
+\section{Application to real data}
+
+\red{TODO}
+
+
+\newpage
+\bibliography{refs.bib}
+
+\appendix
+\numberwithin{equation}{section}
+
+
+\section{Definitions}
+\textbf{Definition} \textit{Kullback-Leibler divergence}.\\ Let $Q$ and $P$ be probability measures on $\Xc$, such that $ Q $ is absolutely continuous with respect to $P$, then the Kullback-Leibler divergence is defined as,
+\begin{equation}\label{eq:kl}
+\KL(Q \| P) = \int_{\Xc} \log \left( \frac{dQ}{dP} \right) dQ
+\end{equation}
+where $dQ/dP$ is the Radon-Nikodym derivative of $Q$ with respect to $P$.
+
+
+\section{Co-ordinate ascent algorithm}
+
+\subsection{Element-wise update equations}
+
+\textbf{Updates for $\mu_{G_K}$}
+\begin{equation} \label{eq:mu_update}
+\begin{aligned}
+    f(\mu_i; & \mu_{-i}, \sigma, \gamma) :=\
+    \frac{1}{2\tau^2} \left(
+	(X^\top X)_{ii} \mu_i^2 + 
+	\sum_{j \in G_K, j\neq i} (X^\top X)_{ji} \mu_j \mu_i
+    \right) \\
++ &\
+    \frac{1}{\tau^2} \left(
+	\bigg( \sum_{j \in G_K^c} (X^\top X)_{ji} \gamma_{J} \mu_j \mu_i \bigg) -
+	\mu_i \langle y, X_{:i} \rangle   
+    \right)
++
+    \lambda \left( \sum_{j \in G_K} 
+	\sigma_j^2 + \mu_j^2
+    \right)^{1/2} + C
+\end{aligned}
+\end{equation}
+The above expression in turn is minimized via optimization routines.
+
+Using the fact that $ \left( \sum_{j \in G_K} \sigma_j^2 + \mu_j^2 \right)^{1/2} \leq 1 + \sum_{j \in G_K} \sigma_j^2 + \mu_j^2 $, we can obtain a looser upper bound on \eqref{eq:mu_sigma_main} and the resulting expression we need to minimize,
+\begin{equation}
+\begin{aligned}
+    f_2(\mu_i; & \mu_{-i}, \sigma, \gamma) :=\
+    \frac{1}{2\tau^2} \left(
+	(X^\top X)_{ii} \mu_i^2 + 
+	\sum_{j \in G_K, j\neq i} (X^\top X)_{ji} \mu_j \mu_i
+    \right) \\
++ &\
+    \frac{1}{\tau^2} \left(
+	\sum_{j \in G_K^c} \left[ (X^\top X)_{ji} \gamma_{J} \mu_j \mu_i \right] -
+	\mu_i \langle y, X_{:i} \rangle   
+    \right)
++
+    \lambda \mu_i^2 + C
+\end{aligned}
+\end{equation}
+which in turn in minimized when
+\begin{equation} \label{eq:mu_analytic}
+    \mu_i =
+    - \frac{
+	\left(\sum_{j \in G_K^c} (X^\top X)_{ji} \gamma_{J} \mu_j \right) +
+	\frac{1}{2} \left(\sum_{j \in G_K, j\neq i} (X^\top X)_{ji} \mu_j \right)-
+	\langle y, X_{:i} \rangle 
+    }{
+	(X^\top X)_{ii} +
+	2 \tau^2 \lambda 
+    }
+\end{equation}
+
+Interestingly, if we assume the columns of $X$ are orthogonal, i.e. $ (X^\top X)_{ij} = 0$ for $i \neq j$, and $\lambda = 0$, then \eqref{eq:mu_analytic} can be written as
+\begin{equation}
+    \mu_i^{\text{ols}} = (X^\top X)_{ii}^{-1} (X_{:i})^\top y
+\end{equation}
+which we recognize as the ordinary least squares estimator under an orthogonal design. Similarly, when $\lambda > 0$, the minimizer is given by
+\begin{equation}
+    \mu_i^{\text{rr}} := \left((X^\top X)_{ii} + 2\tau^2 \lambda \right)^{-1} (X_{:i})^\top y
+\end{equation}
+which we recognize as the solution under the ridge penalty. It follows that the minimizer \eqref{eq:mu_analytic} is given by a ridge term under the assumption of an orthogonal design and some additional term, formally,
+\begin{equation}
+    \mu_i = \mu_i^{\text{rr}} - \frac{
+	\left(\sum_{j \in G_K^c} (X^\top X)_{ji} \gamma_{J} \mu_j \right) +
+	\frac{1}{2} \left(\sum_{j \in G_K, j\neq i} (X^\top X)_{ji} \mu_j \right)
+    }{
+	(X^\top X)_{ii} +
+	2 \tau^2 \lambda 
+    }
+\end{equation}
+
+\textbf{Updates for $\sigma_{G_K}$}
+\begin{equation}
+\begin{aligned}
+    g(\sigma_i;& \mu, \sigma_{-i}, \gamma) :=\
+    \frac{1}{2\tau^2} (X^\top X)_{ii} \sigma_i^2
+-
+    \log{\sigma_i}
++
+    \lambda \left( \sum_{j \in G_K} 
+	\sigma_j^2 + \mu_j^2
+    \right)^{1/2} + C
+\end{aligned}
+\end{equation}
+As before, under the looser upper bound we have,
+\begin{equation}
+    g_2 (\sigma_i; \mu, \sigma_{-i}, \gamma) :=\
+    \frac{1}{2\tau^2} (X^\top X)_{ii} \sigma_i^2
+-
+    \log{\sigma_i}
++
+    \lambda \sigma_i^2 + C
+\end{equation}
+which is minimized when,
+\begin{equation}
+    \sigma_i = \left( \frac{(X^\top X)_{ii}}{\sigma^2} + 2 \lambda \right)^{-1/2}
+\end{equation}
+which we notice does not depend on the other parameters and in turn can be used to initialize $\sigma_i$.
+
+
+
+\section{MCMC sampler}
+
+We construct a Gibbs sampler to sample from the posterior distribution. To begin, we note that the likelihood can be expressed as,
+\begin{equation}
+    p(\D | \beta, z, \tau^2) = \prod \phi \left(y_i; \sum_{k = 1}^M z_k \langle x_{G_k}, \beta_{G_k} \rangle, \tau^2 \right)
+\end{equation}
+In turn, we can re-write our prior as,
+\begin{equation}
+\begin{aligned}
+    \beta_{G_k} \overset{\text{ind}}{\sim} &\ \Psi(\beta_{G_k}; \lambda) \\
+z_k | \theta_k \overset{\text{ind}}{\sim} &\ \text{Bernoulli}(\theta_k) \\
+    \theta_k \overset{\text{iid}}{\sim} &\ \text{Beta}(a_0, b_0)
+\end{aligned}
+\end{equation}
+Finally, recall our prior on $\xi = \tau^2$, is
+\begin{equation}
+    \xi \sim \Gamma^{-1}(\xi; a, b)
+\end{equation}
+which has density $ \frac{b^a}{\Gamma(a)} \left( \frac{1}{\xi} \right)^{a + 1} \exp\left( -\frac{\beta}{x} \right)$.
+
+To sample form the posterior we:
+\begin{enumerate}
+    \itemsep0em
+    \item Initialize $\beta^{(i)}, z^{(i)}, \theta^{(i)}, \xi^{(i)}$
+    \item For $i = 1, \dots, N$
+    \begin{enumerate}
+	\item For $k = 1, \dots, M$
+	\begin{enumerate}
+	    \item Sample $\theta^{(i)}_{k} \overset{\text{iid.}}{\sim} \text{Beta}(a_0, b_0)$
+	\end{enumerate}
+	\item For $k = 1, \dots, M$
+	\begin{enumerate}
+	    \item Sample $z^{(i)}_{k} \overset{\text{ind.}}{\sim} \text{Bernoulli}(p_k)$
+	    where
+	    \begin{equation}
+		p_k = \frac
+		{p(z_k = 1 | \D, \beta, \theta, \xi)}
+		{p(z_k = 1 | \D, \beta, \theta, \xi) + p(z_k = 0 | \D, \beta, \theta, \xi)}
+	    \end{equation}
+	\end{enumerate}
+	\item For $k = 1, \dots, M$
+	\begin{enumerate}
+	    \item Sample $ \beta_{G_k}^{(i)} \sim p(\beta_{G_k} | \D, z, \beta^{(i-1)}, \xi)$
+	\end{enumerate}
+    \item Sample $\xi \overset{\text{iid.}}{\sim} \Gamma^{-1}(a + 0.5n, b + 0.5 \| y - X (\beta \circ z) \| ^2 )$
+    \end{enumerate}
+\end{enumerate}
+
+
+\end{document}

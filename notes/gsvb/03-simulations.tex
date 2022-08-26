@@ -1,0 +1,32 @@
+\newpage
+\section{Simulation study}
+
+\subsection{Simulation design}
+
+Data is simulated for $i=1,\dots,n$ observations, each having a response $y_i \in \R$ and $p$ continuous predictors $x_i \in \R^p$. The response is sampled independently from a Gaussian distribution with mean $\beta_0^\top x_i$ and variance $\tau^2 = 1$, where the true coefficient vector $\beta_0 = (\beta_{0, 1}, \dots, \beta_{0, p})^\top \in \R^p$ contains $s$ non-zero groups each of size $g$. Non-zero elements of $\beta_{0}$ are sampled independently and uniformly from $[-3,-1] \cup [1,3]$. Finally, the predictors are generated from one of 3 settings:
+\begin{itemize}
+    \item \textbf{Setting 1}: $x_i \overset{\text{iid}}{\sim} N(0_p, I_p)$ where $0_p$ is the p-dimension zero vector and $I_p$ the $p\times p$ identity matrix.
+    \item \textbf{Setting 2}: $x_i \overset{\text{iid}}{\sim} N(0, \Sigma)$ where $\Sigma_{ij} = 0.6^{|i - j|}$ for $i,j=1,\dots,p$.
+    \item \textbf{Setting 3}: $x_i \overset{\text{iid}}{\sim} N(0, \Sigma)$  where $\Sigma_{ii} = 1$, $\Sigma_{ij}=0.6$ for $i\neq j$ and $i, j = 50k, \dots, 50(k+1)$ for $k=0,\dots, p/50 -1$ and $\Sigma_{ij} =0$ otherwise.
+\end{itemize}
+
+As of yet we have compared our method, referred to as \textbf{GSVB} (group sparse variational Bayes), against
+\begin{itemize}
+    \item \textbf{MCMC}: A Gibbs sampler for the group spike-and-slab prior
+    \item \textbf{SSGL}: Spike-and-slab group LASSO, a method that uses a similar prior however the multivariate Dirac mass is replaced with a multivariate double exponential distribution, giving a continuous mixture with one density acting as the spike and another the slab. Under this prior it is possible to derive an EM algorithm, which allows for fast updates but only returns maximum a posteriori estimates.
+\end{itemize}
+
+% \red{see Jonathan thesis eq. 4.28 on simulation designs for the group sparse setting}
+
+\subsection{Results}
+
+\Cref{tab:bvs_comprison} compares the different methods. Notably, all methods have comparable performance metrics. However, regarding runtime our is the fastest, but this may come down to the fact that our method (and the MCMC implementation) is written in C\texttt{++}, whereas GSSL is written in \texttt{R}.
+
+\begin{table}[htp]
+    \centering
+    \centerline{\resizebox{1.2\textwidth}{!}{\input{./tables/comparison.tex}}}
+    \caption{Companion of Group-sparse Bayesian variable selection methods taking $(n, p, g, s) = (200, 1000, 5, 3)$}
+    \label{tab:bvs_comprison}
+\end{table}
+
+

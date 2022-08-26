@@ -1,0 +1,108 @@
+
+
+
+
+
+% ----------------------------------------
+% Element wise updates
+% ----------------------------------------
+\subsection{Element-wise update equations}
+
+\textbf{Updates for $\mu_{G_K}$}
+\begin{equation} \label{eq:mu_update}
+\begin{aligned}
+    f(\mu_i; & \mu_{-i}, \sigma, \gamma) :=\
+    \frac{1}{2\tau^2} \left(
+	(X^\top X)_{ii} \mu_i^2 + 
+	\sum_{j \in G_K, j\neq i} (X^\top X)_{ji} \mu_j \mu_i
+    \right) \\
++ &\
+    \frac{1}{\tau^2} \left(
+	\bigg( \sum_{j \in G_K^c} (X^\top X)_{ji} \gamma_{J} \mu_j \mu_i \bigg) -
+	\mu_i \langle y, X_{:i} \rangle   
+    \right)
++
+    \lambda \left( \sum_{j \in G_K} 
+	\sigma_j^2 + \mu_j^2
+    \right)^{1/2} + C
+\end{aligned}
+\end{equation}
+The above expression in turn is minimized via optimization routines.
+
+Using the fact that $ \left( \sum_{j \in G_K} \sigma_j^2 + \mu_j^2 \right)^{1/2} \leq 1 + \sum_{j \in G_K} \sigma_j^2 + \mu_j^2 $, we can obtain a looser upper bound on \eqref{eq:mu_sigma_main} and the resulting expression we need to minimize,
+\begin{equation}
+\begin{aligned}
+    f_2(\mu_i; & \mu_{-i}, \sigma, \gamma) :=\
+    \frac{1}{2\tau^2} \left(
+	(X^\top X)_{ii} \mu_i^2 + 
+	\sum_{j \in G_K, j\neq i} (X^\top X)_{ji} \mu_j \mu_i
+    \right) \\
++ &\
+    \frac{1}{\tau^2} \left(
+	\sum_{j \in G_K^c} \left[ (X^\top X)_{ji} \gamma_{J} \mu_j \mu_i \right] -
+	\mu_i \langle y, X_{:i} \rangle   
+    \right)
++
+    \lambda \mu_i^2 + C
+\end{aligned}
+\end{equation}
+which in turn in minimized when
+\begin{equation} \label{eq:mu_analytic}
+    \mu_i =
+    - \frac{
+	\left(\sum_{j \in G_K^c} (X^\top X)_{ji} \gamma_{J} \mu_j \right) +
+	\frac{1}{2} \left(\sum_{j \in G_K, j\neq i} (X^\top X)_{ji} \mu_j \right)-
+	\langle y, X_{:i} \rangle 
+    }{
+	(X^\top X)_{ii} +
+	2 \tau^2 \lambda 
+    }
+\end{equation}
+
+Interestingly, if we assume the columns of $X$ are orthogonal, i.e. $ (X^\top X)_{ij} = 0$ for $i \neq j$, and $\lambda = 0$, then \eqref{eq:mu_analytic} can be written as
+\begin{equation}
+    \mu_i^{\text{ols}} = (X^\top X)_{ii}^{-1} (X_{:i})^\top y
+\end{equation}
+which we recognize as the ordinary least squares estimator under an orthogonal design. Similarly, when $\lambda > 0$, the minimizer is given by
+\begin{equation}
+    \mu_i^{\text{rr}} := \left((X^\top X)_{ii} + 2\tau^2 \lambda \right)^{-1} (X_{:i})^\top y
+\end{equation}
+which we recognize as the solution under the ridge penalty. It follows that the minimizer \eqref{eq:mu_analytic} is given by a ridge term under the assumption of an orthogonal design and some additional term, formally,
+\begin{equation}
+    \mu_i = \mu_i^{\text{rr}} - \frac{
+	\left(\sum_{j \in G_K^c} (X^\top X)_{ji} \gamma_{J} \mu_j \right) +
+	\frac{1}{2} \left(\sum_{j \in G_K, j\neq i} (X^\top X)_{ji} \mu_j \right)
+    }{
+	(X^\top X)_{ii} +
+	2 \tau^2 \lambda 
+    }
+\end{equation}
+
+\textbf{Updates for $\sigma_{G_K}$}
+\begin{equation}
+\begin{aligned}
+    g(\sigma_i;& \mu, \sigma_{-i}, \gamma) :=\
+    \frac{1}{2\tau^2} (X^\top X)_{ii} \sigma_i^2
+-
+    \log{\sigma_i}
++
+    \lambda \left( \sum_{j \in G_K} 
+	\sigma_j^2 + \mu_j^2
+    \right)^{1/2} + C
+\end{aligned}
+\end{equation}
+As before, under the looser upper bound we have,
+\begin{equation}
+    g_2 (\sigma_i; \mu, \sigma_{-i}, \gamma) :=\
+    \frac{1}{2\tau^2} (X^\top X)_{ii} \sigma_i^2
+-
+    \log{\sigma_i}
++
+    \lambda \sigma_i^2 + C
+\end{equation}
+which is minimized when,
+\begin{equation}
+    \sigma_i = \left( \frac{(X^\top X)_{ii}}{\sigma^2} + 2 \lambda \right)^{-1/2}
+\end{equation}
+which we notice does not depend on the other parameters and in turn can be used to initialize $\sigma_i$.
+

@@ -1,0 +1,12 @@
+\newpage
+\section{Discussion and next steps}
+
+....
+
+Briefly, we mention some of the nuances of the proposed methodology. The first and foremost, is the use of a surrogate upper bound for the negative ELBO, similar to those seen elsewhere in the VI literature, e.g. in logistic regression and proportional hazards model. Formally, within our update equations we must evaluate $\E_Q \left[ \| \beta_{G_k} \| \right]$, a term present in the chosen prior. As there is no closed form expression for this expectation, we have chosen to upper bound it using Jensen's inequality. We have shown empirically that it does not have a noticeable impact on performance, and that even with the use of this bound the method provides state-of-the-art performance.
+
+Alternative approaches could involve tighter bounds. However, these may require additional parameters if the variational family $\Q'$ is used, i.e. it may not be possible to re-parametrize $\mu_{G_k}$ and $\Sigma_{G_k}$, as shown earlier, and therefore $m_k (m_k+ 1)/2$ parameters may be needed for $\Sigma_{G_k}$. This means longer compute times may result from a different upper bound. Other approaches could involve evaluating the term using Monte-Carlo integration. However, as scalability is one of our underlying requirement, we did not pursue this option.
+
+As of yet, we have not evaluated the coverage of the method. However, generally within the VI literature, the variational posterior tends to underestimate the posterior variance. We suspect this to be the case of the proposed methodology and therefore a limitation of the method would be poor uncertainty quantification. Avenues to correct this issue are being pursued in the VI literature, however have not considered within this setting as of yet.
+
+

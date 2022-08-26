@@ -1,0 +1,96 @@
+\newpage
+\section{Problem formulation}
+
+We will consider the linear regression model,
+\begin{equation} \label{eq:model} 
+    y = X \beta + \epsilon
+\end{equation}
+where, for $n$ observations and $p$ features, $y = (y_1, \dots, y_n)^\top \in \R^n$ is the response vector, $X = (x_1, \dots, x_n)^\top \in \R^{n \times p}$ is the design matrix with $x_i = (x_{i1}, \dots, x_{ip})^\top \in \R^p$ being the feature vector for the $i$th sample, $\beta = (\beta_1, \dots, \beta_p)^\top \in \R^p$ is the model coefficient vector, and $\epsilon = (\epsilon_1, \dots, \epsilon_n)^\top \in \R^n$ is a vector of noise terms for which we assume $\epsilon_i \overset{\text{iid.}}{\sim} N(0, \tau^2)$. 
+
+Under a group-sparse setting, it is assumed that features can be grouped, and that few groups have non-zero coefficient values \citep{Giraud2021}. Formally, define the groups $G_k = \{ G_{k,1}, \dots, G_{k, m_k} \}$ for $k=1,\dots,M$, to be disjoint sets of indices of size $m_k$ such that $ \bigcup_{k=1}^M G_k = \{1, \dots, p \}$ and let $G_k^c = \{1,\dots, p \} \setminus G_k$. Further, denote $X_{G_k} = (x_{1, G_k}, \dots, x_{n, G_K})^\top \in \R^{n \times m_k}$ where $x_{i, G_k} = \{x_{ij} : j \in G_k \}$,
+$X_{G_k^c} = (x_{1, G_k^c}, \dots, x_{n, G_K^c})^\top \in \R^{n \times (p - m_k)}$ where $x_{i, G_k^c} = \{x_{ij} : j \in G_k^c \}$, $\beta_{G_k} = \{\beta_j : j \in G_k \}$ and $\beta_{G_k^c} = \{ \beta_j : j \in G_k^c \}$.
+
+Based on the above assumptions it follows that \eqref{eq:model} can be written as
+\begin{equation}
+    y = \left( \sum_{k=1}^{M} X_{G_k} \beta_{G_k} \right) + \epsilon
+\end{equation}
+For which, under iid. Gaussian noise, the log-likelihood is given by,
+\begin{equation} \label{eq:log-likelihood}
+    \ell(\D; \beta, \tau^2) = - \frac{n}{2}\log(2\pi\tau^2) - \frac{1}{2\tau^2} \| y - X \beta \|^2 
+\end{equation}
+where $\D = \{ (y_i, x_i) \}_{i=1}^n$.
+
+
+\subsection{Prior and Posterior}
+
+For the model parameters $\beta$ we consider a group spike-and-slab (GSpSL) prior, which has a hierarchical representation,
+\begin{equation}
+\begin{aligned}
+    \beta_{G_k} | z_k \overset{\text{ind}}{\sim} &\ z_k \Psi(\beta_{G_k}; \lambda) + (1-z_k) \delta_0(\beta_{G_k}) \\
+    z_k | \theta_k \overset{\text{ind}}{\sim} &\ \text{Bernoulli}(\theta_k) \\
+    \theta_k \overset{\text{iid}}{\sim} &\ \text{Beta}(a_0, b_0)
+\end{aligned}
+\end{equation}
+for $k=1,\dots,M$, where $\delta_0(\beta_{G_k})$ is the multivariate Dirac mass on zero with dimension $m_k = \dim(\beta_{G_k})$, and $\Psi(\beta_{G_k})$ is the multivariate double exponential distribution with density
+\begin{equation} \label{eq:density_mvde}
+    \psi(\beta_{G_k}; \lambda) = C_k \lambda^{m_k} \exp \left( - \lambda \| \beta_{G_k} \| \right)
+\end{equation}
+where $ C_k = \left[ 2^{m_k} \pi^{(m_k -1)/2} \Gamma \left( (m_k + 1) /2 \right) \right]^{-1} $ and $ \| \cdot \| $ is the $\ell_2$-norm \citep{Bai2020d}.
+
+Regarding $\tau^2$, there are many choices a practitioner may wish to use (see for example \citep{Gelman2006}). However, two popular priors often used in practise are
+\begin{itemize}
+    \itemsep0em
+    \item \textit{Locally uniform}, wherein $\tau^2 \sim U(0, 1/\varepsilon)$ for a small positive $\varepsilon$.
+    \item \textit{Inverse-Gamma}, wherein $\tau^2 \sim \Gamma^{-1}(a, b)$, where $\Gamma^{-1}$ denotes an inverse-Gamma distribution with density $\frac{b^a}{\Gamma(a)}x^{-a-1} e^{-b/x}$ on $\R$ for shape $a > 0$ and scale $b > 0$. Common choices for $a=b=\varepsilon$, where $\varepsilon$ is a small positive constant around $0.001$.
+\end{itemize}
+As we will show later, the choice of prior for $\tau^2$ does not greatly impact the co-ordinate ascent algorithm and can easily be changed to support the needs of the practitioner. However, in the meantime, and given the prior is one of the most popular, we place an inverse-Gamma prior on $\tau^2$.
+
+Finally, we denote the prior distribution as $\Pi(\beta, \tau^2)$ which given the prior independence of $\beta$ and $\tau^2$ can be written as $\Pi(\beta) \Gamma^{-1}(\tau^2)$. Further, we write the posterior density as
+\begin{equation} \label{eq:posterior} 
+d\Pi(\beta, \tau^2 | \D) = \Pi_D^{-1} e^{\ell(\D; \beta, \tau^2)} d\Pi(\beta, \tau^2)
+\end{equation}
+where $\Pi_\D = \int_{\R^{p} \times \R_+} e^{\ell(\D; \beta, \tau^2)} d\Pi(\beta, \tau^2)$ is a normalization constant known as the model evidence.
+
+
+\subsection{Variational Families}
+
+Rather than using MCMC to obtain a sample from the posterior, we turn to variational inference (VI). Within VI the posterior is approximated with an element from a tractable family of distributions known as the variational family. The approximation is known as the variational posterior and is used in place of the posterior in downstream analysis. The variational posterior is given by solving,
+\begin{equation} \label{eq:optim} 
+\tilde{\Pi} = \underset{Q \in \Q}{\argmin}\ \KL\left( Q \| \Pi(\cdot |\D) \right)
+\end{equation}
+where $\Q$ is the variational family and $\KL$ is the KL divergence defined in \Cref{eq:kl}.
+
+To this end, we introduce two variational families. The first is a fully factorized mean-field variational family,
+\begin{equation}
+\begin{aligned}
+    \Q = &\
+    \left\{ \Theta(\mu, \sigma, \gamma) = 
+	\bigotimes_{k=1}^M 
+	\left[ 
+	    \gamma_k\ N\left(\mu_{G_k}, \diag(\sigma_{G_k}^2) \right) + 
+	    (1-\gamma_k) \delta_0
+	\right] 
+    \right\} \\
+    \times &\
+    \{ \Gamma^{-1}(a', b') \}
+\end{aligned}
+\end{equation}
+where $\mu \in \R^p$ with $\mu_{G_k} = \{ \mu_j : j \in G_k \}$, $\sigma^2 \in \R_+^p$ with $\sigma^2_{G_k} = \{\sigma^2_j : j \in G_k \}$, $ \gamma = (\gamma_1, \dots, \gamma_M)^\top \in [0, 1]^M $, $a' > 0, b' > 0$, and $N(\mu, \Sigma)$ denotes the multivariate Normal distribution with mean parameter $\mu$ and covariance $\Sigma$. The second, is variational family with unrestricted covariance within groups,
+\begin{equation}
+\begin{aligned}
+    \Q' = &\
+    \left\{ \Theta'(\mu, \Sigma, \gamma) = 
+	\bigotimes_{k=1}^M 
+	\left[ 
+	    \gamma_k\ N\left(\mu_{G_k}, \Sigma_{G_k} \right) + 
+	    (1-\gamma_k) \delta_0
+	\right] 
+    \right\} \\
+    \times &\
+    \{ \Gamma^{-1}(a', b') \}
+\end{aligned}
+\end{equation}
+where $\Sigma \in \R^{p \times p}$ is a covariance matrix for which $\Sigma_{ij} = 0$, for $i \in G_k, j \in G_l, k \neq l$ (i.e. there is independence between groups) and $\Sigma_{G_k} = (\Sigma_{ij})_{i, j \in G_k} \in \R^{m_k \times m_k}$ denotes the covariance matrix of the $k$th group. Note that $\Q \subset \Q'$, therefore $\Q'$ should provide greater flexibility in approximating the posterior. Additionally $\Q'$ should capture the dependence between coefficients in the same group, i.e. between the elements of $\beta_{G_k}$.
+
+For both variational families the first set is used to parametrize the distribution of $\beta$ whereas the second set parametrizes $\tau^2$. Notably, we consider the two independent. Meaning, if a practitioner wishes to replace the parametrization of $\tau^2$ only minor alterations would need to be made to the co-ordinate ascent algorithms.
+

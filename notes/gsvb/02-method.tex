@@ -1,0 +1,436 @@
+\newpage
+\section{Co-ordinate ascent update equations}
+
+There are several approaches to tackle the optimization problem described in \eqref{eq:optim} \citep{Zhang2019a}. One such method is co-ordinate ascent variational inference (CAVI), wherein one set of parameters are optimized whilst the remainder are kept fixed. Although CAVI generally does not lead to the global optimum, it is easy to implement and is often used in practice. Additionally, CAVI often leads to fast inference algorithms, which is often of importance when analysing high-dimensional data.
+
+Given the form of our variational family, we deviate slightly from the standard approaches to performing CAVI, which rely on the variational family having exponential family form (see \cite[Chp. 10]{Bishop06}). However, the general principles remain the same and rely on optimizing a lower bound on the model evidence, $\Pi_\D$. This bound is known as the evidence lower bound (ELBO),
+\begin{equation}
+   \L_Q(\D) := \E_Q \left[ \ell(\D; \beta) - \log \frac{dQ}{d\Pi} \right]
+\end{equation} 
+and follows from the fact that the KL divergence is non-negative,
+\begin{equation*}
+    0 \leq 
+    \KL(Q \| \Pi(\cdot | \D)) = \E_Q \left[ 
+	\Pi_\D - \ell(\D) - 
+	\log \frac{d\Pi}{dQ}
+    \right]
+    \implies
+    \E_Q \left[ 
+	\ell(\D) -
+	\log \frac{dQ}{d\Pi}
+    \right] \leq \Pi_\D.
+\end{equation*}
+In effect, minimizing $\KL(Q \| \Pi(\cdot | \D)) $ is equivalent to maximizing the ELBO, and thus this later approach is taken for computational convenience. Beyond this, the ELBO is often used to assess the convergence of co-ordinate ascent algorithms, and can act as a goodness of fit measure. 
+
+To gain some intuition about the ELBO, it is worth noting that the first term assess the goodness of fit to the data (via the log-likelihood) and the second term is the KL divergence between the variational posterior and the prior and therefore assess the `closeness' to the prior. In effect, the second term acts as a regularizer and ensures the variational posterior is close to the prior.
+
+Finally, throughout our derivations we exploit the independence structure in our prior and variational family, noting,
+\begin{equation}
+    \log \frac{dQ}{d\Pi}(\beta, \tau^2) = 
+	\log \frac{d\Gamma^{-1}(a', b')}{d \Gamma^{-1}(a, b)}(\tau^2) +
+	\sum_{k=1}^{M} \log \frac{d\Theta_{G_k}}{d\Pi_{G_k}} (\beta_{G_k}) 
+\end{equation}
+where $\Theta_{G_k}$ and $\Pi_{G_k}$ denote the variational and prior distributions for the $k$th group respectively. Based on this form, and the fact we are optimizing parameters independently (whilst keeping the others fixed), one is able to greatly simplify the optimization problem at hand.
+
+% ------------------------------------------------------------------------------
+% Update for Q
+% ------------------------------------------------------------------------------
+\subsection{Update equations and ELBO under $\Q$}
+
+Below we present the update equations for $\mu_{G_k}, \sigma_{G_k}, \gamma_k, a'$ and $b'$. For brevity the full derivations have been moved to Section \ref{appendix:gsvb_derivations} of the Appendix. However, we stress, due to an intractable term arising from the prior, we instead optimize a surrogate upper bound, which uses the fact that $\E_Q [ \| \beta_{G_k} \| ] \leq \left( \E_Q [ \| \beta_{G_k} \|^2 ] \right)^{1/2}$.
+
+Regarding the update of $\mu_{G_k}$, one would minimize,
+\begin{equation} \label{eq:mu_gk}
+\begin{aligned}
+    f(\mu_{G_k}; \mu_{G_k^c}, \sigma, \gamma, a', b') = 
+    \frac{a'}{2b'} 
+    \mu_{G_k}^\top X_{G_k}^\top X_{G_k} \mu_{G_k}
++
+    \frac{a'}{b'} 
+    \sum_{j \neq k} 
+	\gamma_j \mu_{G_k}^\top X_{G_k}^\top X_{G_j} \mu_{G_j}  \\
+-
+    \frac{a'}{b'}
+    \langle y, X_{G_k} \mu_{G_k} \rangle
++
+    \lambda \left( \sigma_{G_k}^\top \sigma_{G_k} + \mu_{G_k}^\top \mu_{G_k} \right)^{1/2} + C
+\end{aligned}
+\end{equation}
+Similarly for $\sigma_{G_k}$,
+\begin{equation} \label{eq:sig_gk}
+\begin{aligned}
+    g(\sigma_{G_k}; \mu, \sigma_{G_k^c}, \gamma, a', b') = 
+    \sum_{i \in G_K} \left( 
+    \frac{a'}{2 b'} 
+	    (X^\top X)_{ii} \sigma_i^2
+-
+    \log{\sigma_i}
+    \right )
++
+    \lambda \left( \sum_{i \in G_K} 
+	\sigma_i^2 + \mu_i^2
+    \right)^{1/2} + C
+\end{aligned}
+\end{equation}
+where in both \eqref{eq:mu_gk} and \eqref{eq:sig_gk} $C$ is a constant term that does not depend on $\mu_{G_k}$ or $\sigma_{G_k}$ respectively. Regarding the update equation for $\gamma_K$, one would solve,
+\begin{equation} \label{eq:g_gk} 
+\begin{aligned}
+    \log &\ \frac{\gamma_K}{1-\gamma_K} = 
+    \log \frac{\bar{w}}{1-\bar{w}}
++ 
+    \frac{m_K}{2}  
++
+    \frac{a'}{b'} \langle y, X_{G_K} \mu_{G_K} \rangle  \\
++ &\ 
+    \frac{1}{2} \sum_{j \in G_K} \log \left( 2 \pi \sigma_j^2 \right)
++
+    \log(C_K )
++
+    m_K \log (\lambda)
+-
+\Bigg\{ 
+    \lambda \left( \sum_{j \in G_K} 
+	\sigma_j^2 + \mu_j^2
+    \right)^{1/2}  \\
++ &\
+    \frac{a'}{2b'}
+    \sum_{i \in G_K} \left( 
+    (X^\top X)_{ii} \sigma_i^2
+    +
+    \sum_{j \in G_K} 
+	(X^\top X)_{ij} \mu_i \mu_j
+    % \right )
++
+    % \frac{1}{\sigma^2}
+    % \sum_{i \in G_K} \left( 
+    2 \sum_{J \neq k} \gamma_{J} \sum_{j \in G_J} (X^\top X)_{ij} 
+	\mu_i \mu_j
+    \right )
+\Bigg\}
+\end{aligned}
+\end{equation}
+which is given by taking the sigmoid of the RHS of \eqref{eq:g_gk} which we denote by $h(\gamma_k; \mu, \sigma, \gamma_{-k}, a', b')$ where $\bar{w} = a_0 / (b_0 + a_0)$, and the notation $\gamma_{-k} = \{\gamma_j : j \in \{1, \dots, M\} \backslash k \}$. Finally, to update $a'$ and $b'$ one would find the minimizer of,
+\begin{equation} \label{eq:update_a_b} 
+\begin{aligned}
+    i(a', b'; \mu, \sigma, \gamma) = & \
+	\frac{a'}{2 b'} 
+	\left( 
+	    \| y \|^2 - 
+	    2 
+	    \sum_{k = 1}^M \langle y, \gamma_k X_{G_k} \mu_{G_k} \rangle +  
+	    \sum_{i=1}^p \sum_{j=1}^p (X^\top X)_{ij} 
+	    \E_Q \left[ \beta_i \beta_j \right]
+	\right) \\
+	+ 
+	a' \log (b')  
+	- &\
+	\log \Gamma(a') + 
+	\left( \frac{n}{2} + a-a' \right)(\log(b') + \kappa(a')) + 
+	(b - b')\frac{a'}{b'} + C
+\end{aligned}
+\end{equation}
+where $k(\cdot)$ is the digamma function, and the expectation
+\begin{equation}
+    \E_{Q} \left[ \beta_i \beta_j \right] = \begin{cases}
+	\gamma_k (\sigma_{j}^2 + \mu_{j}^2) 	& \quad i,j \in G_k, i=j \\
+	\gamma_k \mu_{j}\mu_{i} 		& \quad i,j \in G_k, i \neq j \\
+	\gamma_k \gamma_J \mu_{j}\mu_{i} 	& \quad i \in G_k, j \in G_J, J \neq k
+    \end{cases}
+\end{equation}
+Notably, the minimization problems described in \eqref{eq:mu_gk}, \eqref{eq:sig_gk} and \eqref{eq:update_a_b} have no analytic solution and therefore optimization routines are needed to solve them (e.g. L-BFGS). Further, optimization of $a'$ and $b'$ should be performed jointly. As of yet, it is unclear to us why this is required.
+
+
+\textbf{Evidence Lower Bound}
+
+Finally, the ELBO is given as,
+\begin{equation*} \label{eq:elbo} 
+\begin{aligned}
+    \L_Q(\D &) = 
+- 
+    \frac{n}{2} (\log(2 \pi) + \log(b') - \kappa(a'))
+- 
+    \frac{a'}{2b'} \left( \| y \|^2  + \sum_{i=1}^p \sum_{j=1}^p (X^\top X)_{ij} \E_Q \left[ \beta_i \beta_j \right] \right)\\
++& 
+    \sum_{k=1}^M \bigg(  
+    \frac{a'}{b'} \gamma_k \langle y, X_{G_k} \mu_{G_k} \rangle
++
+    \frac{\gamma_k}{2} \sum_{j \in G_k} \left( \log( 2 \pi \sigma_j^2) \right)
++
+    \gamma_k \log(C_k)
++ 
+    \frac{\gamma_k m_k}{2} \\
++ &
+    \gamma_k m_k \log (\lambda)
+-
+    \E_Q \left[ \I_{z_k =1} \lambda \| \beta_{G_k} \| \right]
+-
+    \gamma_k \log \frac{\gamma_k}{\bar{w}}
+-
+    (1-\gamma_k) \log \frac{1 - \gamma_k}{1 - \bar{w}} 
+    \bigg) \\
++&
+    a' \log (b') - a \log(b) + \log \frac{\Gamma(a)}{\Gamma(a')} + (a-a')(\log(b') + \kappa(a')) + (b - b')\frac{a'}{b'}
+\end{aligned}
+\end{equation*}
+
+Note, $\E_Q \left[ \I_{\{z_k = 1\}} \lambda \| \beta_{G_k} \| \right] $ does not have a closed form expression, therefore to compute the ELBO one may wish to approximate this term, e.g. via Monte-Carlo integration.
+
+
+% ------------------------------------------------------------------------------
+% Insight into updates of mu_G_k
+% ------------------------------------------------------------------------------
+\subsection{Insight into the update of $\mu_{G_k}$}
+
+Before presenting the update equations under $\Q'$ we examine the update equation for $\mu_{G_k}$ under $\Q$ in more detail. Ultimately, we wish to gain some intuition about what might be happening when \eqref{eq:mu_gk} is being minimized. 
+
+We recall, the minimization taking place is of,
+\begin{equation*}
+\begin{aligned}
+    \frac{a'}{2b'} 
+    \mu_{G_k}^\top X_{G_k}^\top X_{G_k} \mu_{G_k}
++
+    \frac{a'}{b'} 
+    \sum_{j \neq k} 
+	\gamma_j \mu_{G_k}^\top X_{G_k}^\top X_{G_j} \mu_{G_j} 
+-
+    \frac{a'}{b'}
+    \langle y, X_{G_k} \mu_{G_k} \rangle
++ \\
+    \lambda \left( \sigma_{G_k}^\top \sigma_{G_k} + \mu_{G_k}^\top \mu_{G_k} \right)^{1/2} + C
+\end{aligned}
+\end{equation*}
+which is done with respect to $\mu_{G_k}$. As mentioned, there is no analytic solution to this problem, hence we seek a form, in this case a looser upper bound than the one previously used, which does indeed have an analytic solution.
+
+For this, we use the fact that $ \left( \sum_{j \in G_k} \sigma_j^2 + \mu_j^2 \right)^{1/2} \leq 1 + \sum_{j \in G_k} \sigma_j^2 + \mu_j^2 $, which follows from $x \leq 1 + x^2$. Thus, we can upper bound \eqref{eq:mu_gk} by,
+\begin{equation*}
+\begin{aligned}
+    \frac{a'}{2b'} 
+    \| X_{G_k} \mu_{G_k} \|^2
++
+    \frac{a'}{b'} 
+    \sum_{J \neq k} 
+	\gamma_J \mu_{G_k}^\top X_{G_k}^\top X_{G_J} \mu_{G_J} 
+-
+    \frac{a'}{b'}
+    \langle y, X_{G_k} \mu_{G_k} \rangle
++
+    \lambda \| \mu_{G_k} \|^2 + C
+\end{aligned}
+\end{equation*}
+Which in turn, is minimized by,
+\begin{equation*}
+    \hat{\mu}_{G_k} = \Xi^{-1} X_{G_k}^\top y - \Xi^{-1} \sum_{J \neq k} \gamma_J X_{G_k}^\top X_{G_J} \mu_{G_J}    
+\end{equation*}
+where $\Xi = X_{G_k}^\top X_{G_k} + \frac{2 \lambda b'}{a'} I_{m_k}$. Letting $P := (X_{G_k}^\top X_{G_k} + \frac{2 \lambda b'}{a'} I_{m_k})^{-1} X_{G_k}^\top $, and denoting the prediction of $y$ by the $j$th group of features as $\hat{y}_{G_j} = X_{G_j} \mu_{G_j}$,the previous display can be re-written as,
+\begin{equation*}
+\hat{\mu}_{G_k} = P(y - \sum_{j \neq k} \gamma_j \hat{y}_{G_j})
+\end{equation*}
+In other words the minimizer $\hat{\mu}_{G_k}$ is a vector that explains the remaining signal in $y$ given the signal explained by $\sum_{j \neq k} \gamma_j \hat{y}_{G_j}$, which importantly uses the group inclusion probability $\gamma_j$ to weight the importance of the group. Finally, to ensure the matrix $X_{G_k}^\top X_{G_k}$ is invertible, a positive term is added to the diagonal, this being $2 \lambda \frac{b'}{a'}$.
+
+To elucidate this further, consider the extreme case, $y - \sum_{J \neq k} \gamma_J \hat{y}_{G_J} = 0_n$ (the n-dimensional zero vector), then the resulting minimizer $\hat{\mu}_{G_k} = 0_{m_k}$.
+
+
+
+% ------------------------------------------------------------------------------
+% Updates for Q'
+% ------------------------------------------------------------------------------
+\subsection{Update equations and ELBO under $\Q'$} \label{sec:alg_qp} 
+
+The update equations under the variational family $\Q'$ are similar to those under $\Q$. As before, we write the negative ELBO with respect to $Q'$ as a function of $\mu_{G_k}$ and $\Sigma_{G_k}$, keeping the remaining parameters fixed,
+\begin{equation} \label{eq:QD_mu_sigma_obj}
+\begin{aligned}
+    % \frac{1}{2\tau^2} 
+    \frac{a'}{2b'} 
+    \mu_{G_k}^\top X_{G_k}^\top X_{G_k} \mu_{G_k}
++
+    % \frac{1}{2\tau^2} 
+    \frac{a'}{2b'} 
+    \tr( X_{G_k}^\top X_{G_k} \Sigma_{G_k})
++
+    % \frac{1}{\tau^2} 
+    \frac{a'}{b'} 
+    \sum_{j \neq k} 
+	\gamma_j \mu_{G_k}^\top X_{G_k}^\top X_{G_j} \mu_{G_j} \\
+-
+    % \frac{1}{\tau^2}
+    \frac{a'}{b'} 
+    \langle y, X_{G_k} \mu_{G_k} \rangle 
+-	
+    \frac{1}{2} \log \det \Sigma_{G_k} 
++
+    \lambda \left( \sum_{i \in G_k} 
+	\Sigma_{ii} + \mu_i^2
+    \right)^{1/2} + C.
+\end{aligned}
+\end{equation}
+
+However, unlike our previous update equations, we deviate slightly. Using similar ideas to those of \citep{Seeger1999, Opper2009}, we show that only $2m_k$ free parameters are needed to describe the optima of \eqref{eq:QD_mu_sigma_obj} with respect to $\mu_{G_k}$ and $\Sigma_{G_k}$. Na\"ively we would expect to need $(m_k + 1)m_k /2 $ for the lower-triangular portion of the covariance $\Sigma_{G_k}$ and $m_k$ for $\mu_k$. To show this, let $\nu_{G_k} = \lambda (\sum_{i \in G_k} \Sigma_{ii} + \mu^2_i)^{1/2}$, and denote,
+\begin{equation*}
+    \widetilde{\pi}_{G_k}
+	=
+	\frac{\partial \nu_{G_k}}{\partial \mu_{G_k}} 
+	% = 
+	% \left( 
+	%     \frac{ \partial \nu_k}{\partial \mu_{G_k, 1}}, 
+	%     \dots, 
+	%     \frac{\partial \nu_k}{\partial \mu_{G_k, m_k}} 
+	% \right)^\top
+    , \quad
+    \widetilde{W}_{G_k} = 
+	\frac{\partial \nu_{G_k}}{\partial \Sigma_{G_k}} 
+	% = 
+	% \diag \frac{\partial \nu_k}{\partial \sigma_{G_k, i}^2}
+\end{equation*}
+Differentiating \eqref{eq:QD_mu_sigma_obj} with respect to $\mu_{G_k}$ 
+% gives
+% \begin{equation}
+%     \frac{1}{\tau^2} 
+%     \Psi_k \mu_{G_k}
+% +
+%     \frac{1}{\tau^2} 
+%     \sum_{J \neq k} 
+% 	\gamma_J X_{G_k}^\top X_{G_J} \mu_{G_J}
+% -
+%     \frac{1}{\tau^2}
+%     X_{G_k}^\top y
+% +
+%     \widetilde{\pi}_k
+% \end{equation}
+setting to zero and re-arranging gives,
+\begin{equation}  \label{eq:mu_free}
+    \widehat{\mu}_{G_k} = 
+- \Psi_{G_k}^{-1} \left(  \sum_{J \neq k} 
+	\left( \gamma_j X_{G_k}^\top X_{G_j} \mu_{G_j} \right)
+-
+    X_{G_k}^\top y
++
+    \frac{b'}{a'} \widetilde{\pi}_{G_k} \right)
+\end{equation}
+Similarly differentiating \eqref{eq:QD_mu_sigma_obj} wrt. $\Sigma_{G_k}$ 
+% gives,
+% \begin{equation*} 
+%     \frac{1}{2\tau^2} \Psi_k
+% -	
+%     \frac{1}{2} \Sigma_k^{-1}
+% +
+%     \widetilde{W}_k
+% \end{equation*}
+setting to zero and re-arranging gives,
+\begin{equation} \label{eq:sigma_free}
+    \widehat{\Sigma}_{G_k} = 
+    \left( 
+	\frac{a'}{b'} \Psi_{G_k} + 2\widetilde{W}_{G_k}
+    \right)^{-1}
+\end{equation}
+where $\Psi_{G_k} = X_{G_k}^\top X_{G_k}$. We see that the optima \eqref{eq:mu_free} and \eqref{eq:sigma_free} depend on $m_k$ free parameters each. This follows for \eqref{eq:sigma_free} since $\widetilde{W}_{G_k}$ is a diagonal matrix.
+Therefore writing, 
+\begin{equation*}
+    \mu_{G_k} = -\Psi_{G_k}^{-1} \left( \sum_{j \neq k} (\gamma_j X^\top_{G_k} X_{G_j} \mu_{G_j}) - X^\top_{G_k} y + \frac{b'}{a'} \pi_{G_k} \right)
+\end{equation*}
+where $\pi_{G_k} = (\pi_{G_k,1}, \dots, \pi_{G_k, m_k})^\top$, and,
+\begin{equation*}
+    \Sigma_{G_k} = \left( \frac{a'}{b'} \Psi_{G_k} + \diag(w_{G_k}) \right)^{-1}
+\end{equation*}
+where $w_{G_k} = (w_{G_k,1}, \dots, w_{G_k, m_k})^\top$ allows us to re-parametrize $\mu_{G_k}$ and $\Sigma_{G_k}$. Substituting these two expressions for $\mu_{G_k}$ and $\Sigma_{G_k}$ in \eqref{eq:QD_mu_sigma_obj} and optimizing for $\pi_{G_k}$ and $w_{G_k}$ gives the required update equations.
+
+Notably, although the number of free parameters has not increased from the independent to the unconstrained covariance case, optimization of $\Sigma_{G_k}$ requires the inversion of an $m_k \times m_k$ matrix, which would be time consuming for large $m_k$ as inversion is $O(m_k^3)$.
+
+% \textbf{Update of $\gamma_k$}
+
+The update equation for $\gamma_k$ is given by solving,
+\begin{equation} \label{eq:QD_update_gamma} 
+\begin{aligned}
+    \log &\ \frac{\gamma_k}{1-\gamma_k} = 
+    \log \frac{\bar{w}}{1-\bar{w}}
++ 
+    \frac{m_k}{2}  
++
+    \frac{a'}{b'} \langle y, X_{G_k} \mu_{G_k} \rangle  \\
++ &\ 
+    \frac{1}{2} \log \det \left( 2 \pi \Sigma_{G_k} \right)
++
+    \log(C_k )
++
+    m_k \log (\lambda)
+-
+\Bigg\{ 
+    \lambda \left( \sum_{i \in G_k} 
+	\Sigma_{ii} + \mu_i^2
+    \right)^{1/2}  \\
++ &\
+    \frac{a'}{2 b'}
+    \sum_{i \in G_k} \left( 
+    \sum_{j \in G_k} \left[
+	(X^\top X)_{ii} (\Sigma_{ij} + \mu_j \mu_i)
+    \right]
++
+    % \frac{1}{\sigma^2}
+    % \sum_{i \in G_k} \left( 
+    2 \sum_{J \neq k} \gamma_{J} \sum_{j \in G_J} (X^\top X)_{ij} 
+	\mu_i \mu_j
+    \right )
+\Bigg\}
+\end{aligned}
+\end{equation}
+
+% \textbf{Updates for $a'$ and $b'$}
+
+Updates for $a'$ and $b'$ are essentially the same except the expectation in \eqref{eq:update_a_b}, is now given by,
+\begin{equation}
+    \E_{Q} \left[ \beta_i \beta_j \right] = \begin{cases}
+	\gamma_k (\Sigma_{ij} + \mu_{i} \mu_{j}) & \quad i,j \in G_k \\
+	\gamma_k \gamma_J \mu_{j}\mu_{i} 	 & \quad i \in G_k, j \in G_J, J \neq k
+    \end{cases}
+\end{equation}
+
+\textbf{Evidence lower bound under $Q'$}
+
+Minor changes are also made to the evidence lower bound,
+\begin{equation} \label{eq:QD_elbo} 
+\begin{aligned}
+    \L_{Q'}(\D) &= 
+- 
+    \frac{n}{2} (\log(2 \pi) + \log(b') - \kappa(a'))
+- 
+    \frac{a'}{2b'} \left( \| y \|^2  + \sum_{i,j=1}^p(X^\top X)_{ij} \E_Q \left[ \beta_i \beta_j \right] \right)\\
++ &\
+    \sum_{k=1}^M \bigg(  
+\frac{a'}{b'} \gamma_k \langle y, X_{G_k} \mu_{G_k} \rangle
++
+    \frac{\gamma_k}{2} \log( \det (2 \pi \Sigma_k))
++
+    \gamma_k \log(C_k)
++ 
+    \frac{\gamma_k m_k}{2} \\
++ &\
+    \gamma_k m_k \log (\lambda)
+-
+    \E_Q \left[ \I_{z_k =1} \lambda \| \beta_{G_k} \| \right]
+-
+    \gamma_k \log \frac{\gamma_k}{\bar{w}}
+-
+    (1-\gamma_k) \log \frac{1 - \gamma_k}{1 - \bar{w}}
+\bigg) \\
++ &\
+    a' \log (b') - a \log(b) + \log \frac{\Gamma(a)}{\Gamma(a')} + (a-a')(\log(b') + \kappa(a')) + (b - b')\frac{a'}{b'}
+\end{aligned}
+\end{equation}
+
+\subsection{Implementation details}
+
+The implementation details for the variational family $Q$ are as follows: until convergence repeat the following steps:
+\begin{enumerate}
+    \item For $k=1,\dots,M$
+    \begin{enumerate}
+	\item Update $\mu_{G_k} \leftarrow \underset{\mu_{G_k} \in \R^{m_k}}{\argmin}\ f(\mu_{G_k}; \mu_{G_k^c}, \sigma, \gamma, a', b')$, where $f$ is defined in \eqref{eq:mu_gk}.
+	\item Update $\sigma_{G_k} \leftarrow \underset{\sigma_{G_k} \in \R^{m_k}}{\argmin}\ g(\sigma_{G_k}; \mu, \sigma_{G_k^c}, \gamma, a', b')$ where $g$ is defined in \eqref{eq:sig_gk}.
+	\item Update $\gamma_k \leftarrow \text{sigmoid} \ h(\gamma_k; \mu, \sigma, \gamma_{-k}, a', b')$, where $h$ is defined as the RHS of \eqref{eq:g_gk}.
+	\item Update $a', b' \leftarrow \underset{a', b' > 0}{\argmin}\ i(a', b'; \mu, \sigma, \gamma)$ where $i$ is defined in \eqref{eq:update_a_b}.
+    \end{enumerate}
+\end{enumerate}
+Where convergence can be assessed by examining the absolute change in the ELBO or total absolute change in the parameters. Termination would occur when either of these quantities is below a given threshold (e.g. $10^{-3}$). Within our implementation we use the later approach, predominately because it is faster than computing the ELBO after each iteration.
+
+Finally, we note the algorithm can be sensitive to initialization of $\mu$, in our implementation we used the group LASSO from the package \texttt{gglasso} to initialize $\mu$. We found the algorithm to be less sensitive to the initialization of $\sigma$ and therefore initialize it by letting $\sigma = (0.2,\dots, 0.2)^\top$. For $\gamma$ we initialize it by letting $\gamma = (0.5, \dots, 0.5)^\top$. Finally for $a'$ and $b'$ we initialize them as $a' = b' = 10^{-3}$.
+
+The implementation details under $\Q'$ are similar as above, however rather than update $\mu_{G_k}$ and $\Sigma_{G_k}$ directly, the parameters $\pi_{G_k}$ and $w_{G_k}$ are updated instead. The remaining parameters are updated as before using the modified update equations.
+
