@@ -87,3 +87,32 @@ for (i in G_k) {
 S
 t(b[G_k]) %*% t(X[ , G_k]) %*% A %*% X[ , G_j] %*% b[G_j]
 
+
+# ----------------------------------------
+# Testing update mu
+# ----------------------------------------
+y <- rbinom(20, 1, 0.5)
+X <- matrix(rnorm(10 * 20), nrow=20)
+b <- matrix(rnorm(10), ncol=1)
+l <- matrix(rgamma(20, 1, 1), ncol=1)
+
+m <- rnorm(p)
+s <- runif(p, 0.1, 0.2)
+g <- rep(0.1, p)
+l <- rgamma(n, 1, 1)
+
+l <- opt_l(X, m, s, g)
+A <- diag(as.numeric(a(l)))
+XAX <- t(X) %*% A %*% X
+lAl <- t(l) %*% A %*% l
+L <- cbind(L, l)
+
+m_G <- 
+
+
+0.5 * t(m_G) %*% XAX[G, G] %*% m_G +
+t(m_G) %*% XAX[G, Gc] %*% (g[Gc] * m[Gc]) +
+sum((0.5 - y) * X[ , G] %*% m_G) +
+lambda * (sum(s[G]^2 + m_G^2))^(1/2)
+
+
