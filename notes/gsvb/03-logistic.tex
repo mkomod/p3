@@ -158,13 +158,13 @@ Using the fact that $\P(Y=y_i | X=x_i)$ can be written as $e^{y_i x_i^\top \beta
 	    + \frac{a(t_i)}{2} ((x_i^\top \beta)^2 - t_i^2)
     \nonumber \\
     = &\ 
-	\frac{1}{2} \left(
-	    \beta^\top X^\top A_t X \beta 
-	    - t^\top A_t t
-	    + \langle 1, X^\top \beta + t \rangle
-	\right)
 	- \langle y,  X^\top \beta \rangle 
 	- \langle 1, \log s(t) \rangle
+	+ \frac{1}{2} \left(
+	    \langle 1, X^\top \beta + t \rangle
+	    + \beta^\top X^\top A_t X \beta 
+	    - t^\top A_t t
+	\right)
     \label{eq:jj_likelihood}
 \end{align}
 where $t_i$ is a variational parameter for each observation, $t=(t_1, \dots, t_n)^\top$, $A_t =\diag(a(t_i), \dots, a(t_n))$, $s(t) = (s(t_1), \dots, s(t_n))^\top$, and operators to vectors are performed element-wise, e.g. $\log s(t) = (\log s(t_i))_{i=1}^n$. Combining \eqref{eq:jj_likelihood} with results seen in the linear regression setting, it is straightforward to obtain the necessary update equations. 
@@ -172,6 +172,11 @@ where $t_i$ is a variational parameter for each observation, $t=(t_1, \dots, t_n
 Taking the expectation of \eqref{eq:jj_likelihood} wrt. $Q$, gives,
 \begin{equation} \label{eq:jj_expectation_Q} 
 \begin{aligned}
+    \left(
+    \sum_{k = 1}^M 
+	\gamma_k \langle 1/2 - y,  X_{G_k} \mu_{G_k} \rangle 
+    \right) 
+    +
     \frac{1}{2}
     \left(
 	\sum_{i,j=1}^p 
@@ -179,11 +184,7 @@ Taking the expectation of \eqref{eq:jj_likelihood} wrt. $Q$, gives,
     \right)
     - 
     \frac{t^\top A_t t}{2}
-    +
-    \left(
-    \sum_{k = 1}^M 
-	\gamma_k \langle 1/2 - y,  X_{G_k} \mu_{G_k} \rangle 
-    \right) \\
+    \\
     + \langle 1, t/2 - \log s(t) \rangle
 \end{aligned}
 \end{equation}
@@ -192,16 +193,16 @@ Updates for $\mu_{G_k}$ and $\sigma_{G_k}$ are given by finding the minimizers o
 \begin{equation}
 \begin{aligned}
     & 
-    \frac{1}{2} \left( 
+    \langle 1/2 - y,  X_{G_k} \mu_{G_k} \rangle 
+    + \frac{1}{2} \left( 
 	\mu_{G_k}^\top X_{G_k}^\top A_t X_{G_k} \mu_{G_k} 
 	+ \sum_{i \in G_k} (X^\top A_t X)_{ii} \sigma_{i}^2 
-	- t^\top A_t t
+	% - t^\top A_t t
     \right)
-    + \sum_{j \neq k} \gamma_j \mu_{G_k}^\top X_{G_j}^\top A_t X_{G_k} \mu_{G_j} 
     \\
     & 
-    + \langle 1/2 - y,  X_{G_k} \mu_{G_k} \rangle 
-    + \langle 1, t/2 - \log s(t) \rangle
+    + \sum_{j \neq k} \gamma_j \mu_{G_k}^\top X_{G_k}^\top A_t X_{G_j} \mu_{G_j} 
+    % + \langle 1, t/2 - \log s(t) \rangle
     + \lambda \left( \sigma_{G_k}^\top \sigma_{G_k} + \mu_{G_k}^\top \mu_{G_k} \right)^{1/2} 
     - \sum_{i \in G_k}\log{\sigma_i}
     % + C
@@ -214,7 +215,7 @@ Updates for $\gamma_k$
     \log \frac{\bar{w}}{1-\bar{w}}
     + \frac{m_K}{2}  
     + \langle y - 1/2, X_{G_K} \mu_{G_K} \rangle  
-    + \langle 1,\log s(t) - t/2 \rangle
+    % + \langle 1,\log s(t) - t/2 \rangle
     \\
     &
     + \frac{1}{2} \sum_{j \in G_K} \log \left( 2 \pi \sigma_j^2 \right)
@@ -222,14 +223,14 @@ Updates for $\gamma_k$
     + m_K \log (\lambda)
     - \Bigg\{ 
     \lambda \left( \sum_{i \in G_K} \sigma_i^2 + \mu_i^2 \right)^{1/2}  
-    - \frac{t^\top A_t t}{2}
+    % - \frac{t^\top A_t t}{2}
     \\
     &
     + \frac{1}{2} \left( 
 	\mu_{G_k}^\top X_{G_k}^\top A_t X_{G_k} \mu_{G_k} 
 	+ \sum_{i \in G_k} (X^\top A_t X)_{ii} \sigma_{i}^2 
     \right)
-    + \sum_{j \neq k} \gamma_j \mu_{G_k}^\top X_{G_j}^\top A_t X_{G_k} \mu_{G_j} 
+    + \sum_{j \neq k} \gamma_j \mu_{G_k}^\top X_{G_k}^\top A_t X_{G_j} \mu_{G_j} 
 \Bigg\}
 \end{aligned}
 \end{equation}
@@ -273,5 +274,43 @@ Updates for $t_i$ are found by maximizing the ELBO, and are given by
     \right)^{1/2}
 \end{equation}
 
+
+\subsection{A new bound \#2}
+
+Here we derive a new bound by introducing variational parameters to tighten the bound based on Jensen's inequality. Formally, we write,
+\begin{equation} \label{eq:new_bound_2}
+    -\log s(-x) 
+    = \log \left\{ e^{x t} \left( e^{-x t} + e^{x - x t} \right) \right\}
+    = x t + \log \left( e^{-x t} + e^{x - x t} \right)
+\end{equation}
+where $t$ is a variational parameter that needs to be optimized. We then bound the expectation of the \eqref{eq:new_bound_2} using Jensen's,
+\begin{equation}
+    -\E \log s(-x)
+    \leq
+    \E \left[ x t_i \right] + \log \E \left[ e^{-x t} + e^{(1-t)x} \right]
+\end{equation}
+Hence
+\begin{equation}
+    \E_Q \ell (\D; \beta) 
+    \leq 
+    \sum_{i=1}^n 
+    \left( \sum_{k=1}^M \gamma_k (t_i - y_i) x^\top_i \mu_{G_k} \right)
+    +
+    \log \E_Q \left[ e^{-t_i x_i^\top \beta} + e^{(1-t_i)x_i^\top \beta} \right]
+\end{equation}
+where
+\begin{equation*}
+    \E_Q \left[ \exp(a x_i^\top \beta) \right]
+    =	
+	\prod_{k=1}^M \gamma_k \exp \left\{ 
+	    \sum_{j \in G_k} 
+	    a x_{ij} \mu_{j}
+	    + 
+	    \frac{1}{2} a^2 x_{ij}^2 \sigma_{j}^2
+	\right\}
+	+
+	(1- \gamma_k)
+\end{equation*}
+for $a \in \R$.
 
 
