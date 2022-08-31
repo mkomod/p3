@@ -36,7 +36,7 @@ gsvb.logistic <- function(y, X, groups, niter=500, fit=NULL)
     if (is.null(fit)) {
 	m <- rnorm(p)
 	s <- runif(p, 0.1, 0.2)
-	g <- rep(0.1, p)
+	g <- rep(0.05, p)
 	l <- rgamma(n, 1, 1)
     } else {
 	m <- f$m

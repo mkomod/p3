@@ -2,7 +2,7 @@
 # Logistic Regression with a direct application of Jensens
 # -------------------------------------------------------------------------------
 set.seed(1)
-n <- 250
+n <- 350
 p <- 500
 gsize <- 5
 groups <- c(rep(1:(p/gsize), each=gsize))
@@ -18,14 +18,14 @@ a0 <- 1
 b0 <- 200
 w <- a0 / (a0 + b0)
 
+f <- gsvb.logistic(y, X, groups, niter=50)
+f <- gsvb.logistic(y, X, groups, niter=50, fit=f)
 
-f <- gsvb.logistic(y, X, groups, niter=10, fit=f)
 plot(f$m * f$g)
 plot(f$g)
 
 ff <- sparseGAM::SSGL(y, X, X, groups, family="binomial", lambda0=2, lambda1=1)
 plot(ff$beta)
-
 
 gsvb.logistic <- function(y, X, groups, niter=500, fit=NULL)
 {
