@@ -49,6 +49,11 @@ expec <- function(x, mu, sig) -log(s(-x)) * dnorm(x, mean=mu, sd=sig)
 nb <- function(l, mu, sig) l * mu + log(nmgf(mu, sig, -l) + nmgf(mu, sig, 1-l))
 jaak <- function(l, mu, sig) -log(s(l)) + (mu + l)/2 + (s(l) - 0.5)/(2*l) * ((sig^2 + mu^2) - l^2)
 
+nb.4 <- function(l, k, mu, sig)
+{
+    k * (sig^2 + mu^2) + l * mu + log(nmgf(mu, sig, -l) + nmgf(mu, sig, 1-l))
+}
+
 mu <- 2
 sig <- 0.25
 x <- rnorm(100000, mean=mu, sd=sig)
@@ -62,8 +67,8 @@ optim(1, jaak, method="Brent", lower=-4, upper=4, mu=mu, sig=sig)$val
 
 
 lls <- seq(-5, 5, length.out=200)
-plot(lls, sapply(lls, jaak), type="l")
-lines(lls, sapply(lls, nb), type="l")
+plot(lls, sapply(lls, jaak, mu=mu, sig=sig), type="l")
+lines(lls, sapply(lls, nb, mu=mu, sig=sig), type="l")
 abline(h=jen)
 abline(h=mcs)
 
@@ -100,7 +105,6 @@ Xb <- X %*% b
 mean(Xb)
 sd(Xb)
 
-
 nb2 <- function(l, mu, sig) l * (sig^2 + mu^2) + 
     log(nmgf(mu, sig, -l) + nmgf(mu, sig, 1-l))
 
@@ -110,24 +114,124 @@ fx <- exp(xs) * dnorm(xs)
 plot(xs, fx, type="l")
 mean(xs)
 
-pnorm(0, 3, 2, lower.tail=F)
-pnorm((0 - 3)/2, lower.tail=F)
 
+mu <- 1
 sig <- 2
-mu <- 4
-tt <- 1
-pnorm(0, 2*sig^2*tt - mu, sig, lower.tail=T)
-pnorm(mu/sig - 2*sig*tt, 0, 1, lower.tail=T)
 
-xs <- rnorm(100000, 0.2, 4)
-mean()
+x <- rnorm(20000, mean=mu, sd=sig)
+integrate(expec, -10, 50, subdivisions=5e4, mu=mu, sig=sig)$value
+mean(-log(s(-x)))
 
-mu <- -4
+nb3 <- function(tt, mu, sig) {
+    a <- 1 - tt
+    b <- 1 + tt
+
+    tt * (sig*sqrt(2/pi)*exp(-mu^2/(2*sig^2)) + mu*(1-2*pnorm(-mu/sig))) +
+    log(
+    exp(pnorm(mu/sig + sig*-tt, log.p=T)  + -tt*mu + 0.5*tt^2*sig^2) +
+    exp(pnorm(-mu/sig + sig*-tt, log.p=T) - -tt*mu + 0.5*tt^2*sig^2) +
+    exp(pnorm(mu/sig + sig*a, log.p=T)  + a*mu + 0.5*a^2*sig^2) +
+    exp(pnorm(-mu/sig - sig*b, log.p=T) + b*mu + 0.5*b^2*sig^2)
+    )
+}
+
+nb3.int <- function(tt, mu, sig) {
+    integrate(function(x) tt * abs(x) * dnorm(x, mu, sig), -1e2, 1e2,
+	      subdivisions=1e5)$val + 
+    log(
+    integrate(function(x) exp((x - tt * abs(x))) * dnorm(x, mu, sig), -1e2, 1e2,
+	      subdivisions=1e5)$val +
+    integrate(function(x) exp((-tt * abs(x))) * dnorm(x, mu, sig), -1e2, 1e2,
+	  subdivisions=1e5)$val
+    )
+}
+
+
+mu <- 1
+sig <- 0.5
+
+optim(0.5, nb3, method="Brent", lower=-3, upper=3, mu=mu, sig=sig)$val
+optim(0.5, nb3.int, method="Brent", lower=-3, upper=3, mu=mu, sig=sig)$val
+optim(1, nb, method="Brent", lower=-4, upper=4, mu=mu, sig=sig)$val
+optim(1, jaak, method="Brent", lower=-4, upper=4, mu=mu, sig=sig)$val
+
+
+# mus <- seq(-10, 10, length.out=40)
+mu <- 0
+sigs <- seq(1, 100, length.out=40)
+
+sig <- 15
+mu <- 0.5
+res <- sapply(sigs, function(sig) 
+{
+    x <- rnorm(20000, mean=mu, sd=sig)
+    c(
+      integrate(expec, -50, 50, subdivisions=5e5, mu=mu, sig=sig)$value,
+      # mean(-log(s(-x))),
+      # log(1 + nmgf(mu, sig, 1)),
+      # optim(1, nb, method="Brent", lower=-4, upper=4, mu=mu, sig=sig)$val,
+      optim(1, jaak, method="Brent", lower=-4, upper=4, mu=mu, sig=sig)$val,
+      nb.5(mu, sig)
+      # optim(0.5, nb3, method="Brent", lower=-10, upper=10, mu=mu, sig=sig)$val
+      # optim(0.5, nb3.int, method="Brent", lower=-3, upper=3, mu=mu, sig=sig)$val
+    )
+})
+
+
+
+res
+rr <- apply(res[-1, ], 1, function(r) r - res[1, ])
+matplot(sigs, log(rr), type="l")
+
+matplot(mus, log(abs(rr)), type="l")
+matplot(mus, t(res), type="l")
+matplot(sigs, t(res), type="l")
+
+lls <- seq(-5, 5, length.out=200)
+plot(lls, sapply(lls, jaak, mu=mu, sig=sig), type="l")
+lines(lls, sapply(lls, nb, mu=mu, sig=sig), type="l")
+lines(lls, sapply(lls, nb3, mu=mu, sig=sig), type="l")
+sapply(lls, nb, mu=mu, sig=sig)
+sapply(lls, nb3, mu=mu, sig=sig)
+abline(h=jen)
+abline(h=mcs)
+
+nb.2 <- function(x) 0.5 * (x + sqrt(2 + x^2)) + x*tt
+
+nb.4 <- function(theta, mu, sig)
+{
+    l <- theta[1]
+    k <- theta[2]
+    k * (sig^2 + mu^2) + l * mu + log(nmgf(mu, sig, -l) + nmgf(mu, sig, 1-l))
+}
+
+optim(c(1, 0), nb.4, mu=mu, sig=sig)
+
+nb.5 <- function(mu, sig) {
+    2 * exp(-mu + sig^2/2) * pnorm(mu/sig - sig) +
+    0.5 * sig * sqrt(2/pi) * exp(-mu^2/(2 * sig^2)) +
+    mu * pnorm(mu / sig)
+}
+
+integrate(function(x) (2 * log(1+ exp(-x)) + x) * dnorm(x, mu, sig), 0, Inf)
+integrate(function(x) (2 * exp(-x) + x) * dnorm(x, mu, sig), 0, Inf)
+nb.5(mu, sig)
+
+
+optim(3, jaak, mu=mu,sig=sig)$val
+mu <- 0
+sig <- 6
+integrate(expec, -50, 50, subdivisions=2e4, mu=mu, sig=sig)
+nb.5(mu, sig)
+
+mu <- 1
 sig <- 2
-tt <- 2
-pnorm(mu/sig - 2*sig*tt, 0, 1, lower.tail=T) * exp(2 * tt * (mu + tt * sig^2)) +
-pnorm(mu/sig, lower.tail=F)
+integrate(function(x) x * dnorm(x, mean=mu, sd=sig), 0, Inf, subdivisions=1e5)
+0.5 * sig * sqrt(2/pi) * exp(-mu^2/(2 * sig^2)) +
+mu * pnorm(mu / sig)
 
-integrate(function(x) exp((x - abs(x)) * tt) * dnorm(x, mu, sig), -Inf, Inf, 
-	  subdivisions=1e4)
+integrate(function(x) 2*exp(-x) * dnorm(x, mu, sig), 0, Inf)
+2 * exp(-mu + sig^2/2) * pnorm(mu/sig - sig)
+
+
 
