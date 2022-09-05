@@ -11,7 +11,8 @@ prob <- 1 / (1 + exp(-xb))
 y <- rbinom(n, 1, prob)
 
 lambda <- 1
-tau = 0.5
+# tau = 1 - 1e-7
+tau = 1 - 1e-4
 a0 <- 1
 b0 <- 200
 w <- a0 / (a0 + b0)
@@ -25,16 +26,17 @@ w <- a0 / (a0 + b0)
     if (is.null(fit)) {
 	m <- rnorm(p)
 	s <- runif(p, 0.1, 0.2)
-	g <- rep(0.1, p)
+	g <- rep(1, p)
+	g <- 0 + !!b
     } else {
 	m <- f$m
 	s <- f$s
 	g <- f$g
     }
-    
+
     M <- matrix(ncol=0, nrow=p)
     Sig <- matrix(ncol=0, nrow=p)
-    # Gpr <- matrix(ncol=0, nrow=p)
+    Gpr <- matrix(ncol=0, nrow=p)
 
     # main loop
     for (iter in 1:niter)
@@ -54,16 +56,18 @@ w <- a0 / (a0 + b0)
 		control=list(maxit=20),
 		method="L-BFGS-B", lower=1e-3, upper=s[G][1] + 0.2)$par
 
-	    # g[G] <- opt_g(y, X, m, s, g, G, lambda, S)
+	    g[G] <- opt_g(y, X, m, s, g, G, lambda, tau)
+	    # g[G] <- opt_g(y, X, m, s, g, G, lambda)
 	}
 
 	M <- cbind(M, m)
 	Sig <- cbind(Sig, s)
-	# Gpr <- cbind(Gpr, g)
+	Gpr <- cbind(Gpr, g)
 
 	matplot(t(M), type="l")
+	# matplot(t(Gpr), type="l")
 
-	cat("\niter: ", iter)
+	# cat("\niter: ", iter)
     }
     
     # return(list(m=m, s=s, g=g, M=M, Sig=Sig, Gpr=Gpr))
@@ -81,7 +85,7 @@ nb3 <- function(mu, sig) {
 opt_mu <- function(m_G, y, X, m, s, g, G, lambda, tau) 
 {
     m[G] <- m_G 
-    J <- union(G, which(g > tau))
+    J <- union(G, which(g >= tau))
 
     sum(
 	nb3(X[ , J] %*% m[J], X[ , J]^2 %*% s[J]^2) -
@@ -95,7 +99,7 @@ opt_mu <- function(m_G, y, X, m, s, g, G, lambda, tau)
 opt_s <- function(s_G, y, X, m, s, g, G, lambda, tau) 
 {
     s[G] <- s_G 
-    J <- union(G, which(g > tau))
+    J <- union(G, which(g >= tau))
 
     sum(
 	nb3(X[ , J] %*% m[J], X[ , J]^2 %*% s[J]^2)
@@ -105,22 +109,76 @@ opt_s <- function(s_G, y, X, m, s, g, G, lambda, tau)
 }
 
 
-# opt_g <- function(y, X, m, s, g, G, lambda, S) 
-# {
-#     mk <- length(G)
-#     Ck <- mk * log(2) + (mk -1)/2 * log(pi) + lgamma( (mk + 1) / 2)
-#     S1 <- S * n_mgf(X[ , G], m[G], s[G])
+compute_S <- function(X, m, s, g, groups) 
+{
+    S <- rep(1, nrow(X))
 
-#     res <- 
-# 	log(w / (1- w)) + 
-# 	0.5 * mk + 
-# 	Ck +
-# 	mk * log(lambda) +
-# 	0.5 * sum(log(2 * pi * s[G]^2)) -
-# 	lambda * sqrt(sum(s[G]^2) + sum(m[G]^2)) +
-# 	sum(y * X[ , G] %*% m[G]) -
-# 	sum(log1p(S1)) +
-# 	sum(log1p(S))
+    for (group in unique(groups)) {
+	G <- which(groups == group)
+	S <- S * compute_S_G(X, m, s, g, G)
+    }
+    return(S)
+}
 
-#     sigmoid(res)
-# }
+compute_S_G <- function(X, m, s, g, G)
+{
+    apply(X[ , G], 1, function(x) {
+	(1 - g[G][1]) + g[G][1] * exp(sum(x * m[G] + 0.5 * x^2 * s[G]^2))
+    })
+}
+
+n_mgf <- function(X, m, s)
+{
+    apply(X, 1, function(x) {
+	exp(sum(x * m + 0.5 * x^2 * s^2))
+    })
+}
+
+opt_g <- function(y, X, m, s, g, G, lambda) 
+{
+    mk <- length(G)
+    Ck <- mk * log(2) + (mk -1)/2 * log(pi) + lgamma( (mk + 1) / 2)
+    S <- compute_S(X, m, s, g, groups)
+    S1 <- S * n_mgf(X[ , G], m[G], s[G])
+
+    res <- 
+	log(w / (1- w)) + 
+	0.5 * mk + 
+	Ck +
+	mk * log(lambda) +
+	0.5 * sum(log(2 * pi * s[G]^2)) -
+	lambda * sqrt(sum(s[G]^2) + sum(m[G]^2)) +
+	sum(y * X[ , G] %*% m[G]) -
+	sum(log1p(S1)) +
+	sum(log1p(S))
+
+    sigmoid(res)
+}
+
+
+opt_g <- function(y, X, m, s, g, G, lambda, tau)
+{
+    mk <- length(G)
+    Ck <- mk * log(2) + (mk -1)/2 * log(pi) + lgamma( (mk + 1) / 2)
+    J <- union(G, which(g >= tau))
+    Jc <- setdiff(which(g >= tau), G)
+    S <- ifelse(length(Jc) == 0, 0,
+	sum(nb3(X[ , Jc] %*% m[Jc], X[ , Jc]^2 %*% s[Jc]^2)))
+
+    res <- 
+	log(w / (1- w)) + 
+	0.5 * mk + 
+	Ck +
+	mk * log(lambda) +
+	0.5 * sum(log(2 * pi * s[G]^2)) -
+	lambda * sqrt(sum(s[G]^2) + sum(m[G]^2)) -
+	sum(nb3(X[ , J] %*% m[J], X[ , J]^2 %*% s[J]^2)) +
+	S +
+	sum(y * (X[ , G] %*% m[G]))
+
+    sigmoid(res)
+}
+
+sigmoid <- function(x) 1/(1 + exp(-x))
+
+
