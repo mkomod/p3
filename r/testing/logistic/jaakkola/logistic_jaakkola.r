@@ -97,24 +97,17 @@ gsvb.logistic <- function(y, X, groups, niter=500, fit=NULL)
 
 opt_mu <- function(m_G, y, X, XAX, m, s, g, G, Gc, lambda)
 {
-    res <- 0.5 * t(m_G) %*% XAX[G, G] %*% m_G +
+    0.5 * t(m_G) %*% XAX[G, G] %*% m_G +
     t(m_G) %*% XAX[G, Gc] %*% (g[Gc] * m[Gc]) +
     sum((0.5 - y) * X[ , G] %*% m_G) +
     lambda * (sum(s[G]^2 + m_G^2))^(1/2)
-
-    print(res)
-    res
 }
-
 
 opt_s <- function(s_G, XAX, m, G, lambda)
 {
-    res <- 0.5 * sum(diag(XAX[G, G]) * s_G^2) -
+    0.5 * sum(diag(XAX[G, G]) * s_G^2) -
     sum(log(s_G)) +
     lambda * (sum(s_G^2 + m[G]^2))^(1/2)
-
-    print(res)
-    res
 }
 
 opt_g <- function(y, X, XAX, m, s, g, G, Gc, lambda) 

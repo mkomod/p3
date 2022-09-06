@@ -44,3 +44,20 @@ opt_g <- function(y, X, m, s, g, G, lambda)
     sigmoid(res)
 }
 
+
+nb3 <- function(l, mu, sig)
+{
+    sig / sqrt(2 * pi) * exp(-mu^2 / (2 * sig^2)) + mu * pnorm(mu/sig) +
+    exp(mu + 0.5*sig^2) * pnorm(-mu/sig - sig) +
+    exp(-mu + 0.5*sig^2) * pnorm(mu/sig - sig)
+}
+
+
+xs <- seq(0, 10, by=0.05)
+plot(log(1+exp(xs)), type="l")
+
+log(1+exp(xs)) - (log(2) + xs)
+
+
+
+
