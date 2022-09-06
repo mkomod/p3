@@ -68,7 +68,7 @@ gsvb.logistic <- function(y, X, groups, niter=500, fit=NULL)
 		control=list(maxit=20),
 		method="L-BFGS-B", lower=1e-3, upper=s[G][1] + 0.2)$par
 
-	    g[G] <- opt_g(y, X, m, s, g, l, G, lambda, S, S1)
+	    # g[G] <- opt_g(y, X, m, s, g, l, G, lambda, S, S1)
 
 	    # add G to S
 	    S <- S * compute_S_G(X, m, s, g, -l, groups) 

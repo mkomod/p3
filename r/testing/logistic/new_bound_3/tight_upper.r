@@ -5,17 +5,18 @@ gsize <- 5
 groups <- c(rep(1:(p/gsize), each=gsize))
 
 X <- matrix(rnorm(n * p), nrow=n, ncol=p)
-b <- c(rep(0, gsize), rep(-1, gsize), rep(1, gsize), rep(0, p - 3 * gsize))
+b <- c(rep(0, gsize), rep(-1, gsize), rep(1, gsize), rep(1, gsize), 
+       rep(0, p - 4 * gsize))
 xb <- X %*% b
 prob <- 1 / (1 + exp(-xb))
 y <- rbinom(n, 1, prob)
 
 lambda <- 1
-# tau = 1 - 1e-7
 tau = 1 - 1e-4
 a0 <- 1
 b0 <- 200
 w <- a0 / (a0 + b0)
+
 
 # gsvb.logistic <- function(y, X, groups, niter=500, fit=NULL)
 # {
@@ -38,6 +39,7 @@ w <- a0 / (a0 + b0)
     Sig <- matrix(ncol=0, nrow=p)
     Gpr <- matrix(ncol=0, nrow=p)
 
+
     # main loop
     for (iter in 1:niter)
     {
@@ -56,8 +58,7 @@ w <- a0 / (a0 + b0)
 		control=list(maxit=20),
 		method="L-BFGS-B", lower=1e-3, upper=s[G][1] + 0.2)$par
 
-	    g[G] <- opt_g(y, X, m, s, g, G, lambda, tau)
-	    # g[G] <- opt_g(y, X, m, s, g, G, lambda)
+	    # g[G] <- opt_g(y, X, m, s, g, G, lambda, tau)
 	}
 
 	M <- cbind(M, m)
@@ -75,8 +76,9 @@ w <- a0 / (a0 + b0)
 # }
 
 
-nb3 <- function(mu, sig) {
-    sig / sqrt(2 * pi) * exp(-mu^2 / (2 * sig^2)) + mu * (1 - pnorm(-mu/sig)) +
+nb3 <- function(mu, sig)
+{
+    sig / sqrt(2 * pi) * exp(-mu^2 / (2 * sig^2)) + mu * pnorm(mu/sig) +
     exp(mu + 0.5*sig^2) * pnorm(-mu/sig - sig) +
     exp(-mu + 0.5*sig^2) * pnorm(mu/sig - sig)
 }
@@ -87,13 +89,13 @@ opt_mu <- function(m_G, y, X, m, s, g, G, lambda, tau)
     m[G] <- m_G 
     J <- union(G, which(g >= tau))
 
-    sum(
-	nb3(X[ , J] %*% m[J], X[ , J]^2 %*% s[J]^2) -
-	y * (X[ , G] %*% m[G])
-    ) +
+    mu <- X[ , J] %*% m[J]
+    sig <- sqrt(X[ , J]^2 %*% s[J]^2)
+
+    sum(mu, sig) -
+    sum(y * (X[ , G] %*% m[G])) +
     lambda * sqrt(sum(s[G]^2) + sum(m_G^2))
 }
-
 
 
 opt_s <- function(s_G, y, X, m, s, g, G, lambda, tau) 
@@ -101,58 +103,12 @@ opt_s <- function(s_G, y, X, m, s, g, G, lambda, tau)
     s[G] <- s_G 
     J <- union(G, which(g >= tau))
 
-    sum(
-	nb3(X[ , J] %*% m[J], X[ , J]^2 %*% s[J]^2)
-    ) -
+    mu <- X[ , J] %*% m[J]
+    sig <- sqrt(X[ , J]^2 %*% s[J]^2)
+
+    sum(mu, sig) -
     sum(log(s_G)) +
     lambda * sqrt(sum(s_G^2) + sum(m[G]^2))
-}
-
-
-compute_S <- function(X, m, s, g, groups) 
-{
-    S <- rep(1, nrow(X))
-
-    for (group in unique(groups)) {
-	G <- which(groups == group)
-	S <- S * compute_S_G(X, m, s, g, G)
-    }
-    return(S)
-}
-
-compute_S_G <- function(X, m, s, g, G)
-{
-    apply(X[ , G], 1, function(x) {
-	(1 - g[G][1]) + g[G][1] * exp(sum(x * m[G] + 0.5 * x^2 * s[G]^2))
-    })
-}
-
-n_mgf <- function(X, m, s)
-{
-    apply(X, 1, function(x) {
-	exp(sum(x * m + 0.5 * x^2 * s^2))
-    })
-}
-
-opt_g <- function(y, X, m, s, g, G, lambda) 
-{
-    mk <- length(G)
-    Ck <- mk * log(2) + (mk -1)/2 * log(pi) + lgamma( (mk + 1) / 2)
-    S <- compute_S(X, m, s, g, groups)
-    S1 <- S * n_mgf(X[ , G], m[G], s[G])
-
-    res <- 
-	log(w / (1- w)) + 
-	0.5 * mk + 
-	Ck +
-	mk * log(lambda) +
-	0.5 * sum(log(2 * pi * s[G]^2)) -
-	lambda * sqrt(sum(s[G]^2) + sum(m[G]^2)) +
-	sum(y * X[ , G] %*% m[G]) -
-	sum(log1p(S1)) +
-	sum(log1p(S))
-
-    sigmoid(res)
 }
 
 
@@ -180,5 +136,4 @@ opt_g <- function(y, X, m, s, g, G, lambda, tau)
 }
 
 sigmoid <- function(x) 1/(1 + exp(-x))
-
 

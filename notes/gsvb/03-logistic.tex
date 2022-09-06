@@ -313,4 +313,77 @@ where
 \end{equation*}
 for $a \in \R$.
 
+A new bound 2 is not so good
+
+
+\subsection{A new bound \#3}
+
+We introduce a new bound. Formally, let $\X \sim N(\mu, \sigma^2)$, then
+\begin{equation} \label{eq:new_tight}
+\begin{aligned}
+    \E_\X \left[ \log(1 + \exp(x)) \right] \leq
+	\frac{\sigma}{\sqrt{2\pi}} e^{- \frac{\mu^2}{2 \sigma^2}}
+	+ \mu \Phi \left(\frac{\mu}{\sigma} \right)
+	+ e^{\mu + \sigma^2 / 2 }  \Phi \left( -\frac{\mu}{\sigma} - \sigma \right) \\
+	+ e^{-\mu + \sigma^2 /2 } \Phi \left( \frac{\mu}{\sigma} - \sigma \right)
+\end{aligned}
+\end{equation}
+
+\textit{Proof.} Write $\boldsymbol{Z} = \X - \mu$ and denote the density of $\boldsymbol{Z}$ as $\phi_z$. It follows that,
+{\allowdisplaybreaks %
+\begin{align}
+    \E_{\boldsymbol{X}} [ \log(1 & + \exp(x)) ] =
+    \E_{\boldsymbol{Z}} [ \log(1+ \exp(z + \mu)) ]
+    \nonumber
+    \\
+    =&\ 
+	\int_{-\mu}^\infty \log(1 + \exp(z + \mu)) \phi_z dz
+	+ \int_{-\infty}^{-\mu} \log(1 + \exp(z + \mu)) \phi_z dz
+    \nonumber
+    \\
+    =&\ 
+	\int_{-\mu}^\infty (z + \mu) \phi_z  
+	+ \int_{-\mu}^\infty + \log[1 + \exp(-(z+\mu))] \phi_z dz 
+    \nonumber \\
+    +&\ \int_{-\infty}^{-\mu} \log(1 + \exp(z + \mu))\phi_z dz
+    \nonumber
+    \\
+    \leq &\ 
+	\int_{-\mu}^\infty (z + \mu) \phi_z  
+	+ \int_{-\mu}^\infty \exp(-(z+\mu)) \phi_z dz 
+	+ \int_{-\infty}^{-\mu} \exp(z + \mu)) \phi_z dz
+    \nonumber
+\end{align}%
+} %
+where the inequality follows from $\log(1+x) \leq x$ for $x \in [0, 1]$, and \eqref{eq:new_tight} follows from the fact that $\phi(z)' = - z\phi(z) / \sigma^2 $ and $ \int_{a}^b e^{tz} \phi_z dz = e^{\sigma^2 t^2 / 2} \left[ \Phi(b/\sigma - t \sigma) - \Phi(a/\sigma - t\sigma) \right]$. $\qed$
+
+Comparing our new bound and the bound introduced by \citep{Jakkola97}, against the value computed using quadrature (\Cref{fig:bound_comp}), we notice our new bound is orders of magnitude better, expect for the when the mean and standard deviation is are small.
+\begin{figure}[hb]
+    \centering
+    \includegraphics[width=\textwidth]{./figures/comp_new_bound.pdf}
+    \caption{Comparison of bound against \citep{Jakkola97}}
+    \label{fig:bound_comp}
+\end{figure}
+
+Finally, to employ the bound in the context of our spike-and-slab variational family, we note that, $\E_Q \log ( 1 + \exp (x_i^\top \beta))$ can be written as,
+\begin{equation} \label{eq:ll_expectation}
+    \sum_{s \in S} \left( 
+	\prod_{k=1}^M \gamma_k^{s_k} (1- \gamma_k )^{1- s_k} 
+    \right)
+    \E_{\underset{j \in J_s}{\otimes} N_j}
+    \left( 
+	\log \left[ 1 + \exp \left( \sum_{j \in J} x^\top_{i, G_j} \beta_{G_j} \right) \right] 
+    \right)
+\end{equation}
+where $ S = \{0, 1\}^{M}$ and $J_s = \{j : s_j = 1, j=1,\dots,M \}$. Evidently, there are $2^M$ terms in \eqref{eq:ll_expectation}, meaning for large $M$ the expression is computationally intractable. To work around this limitation, recall, we are assuming there is sparsity in the true coefficient vector, therefore many of the $\gamma_k$s will be close to zero and few will be close to one, meaning \eqref{eq:ll_expectation} can be approximated by
+\begin{equation}
+    \E_{\underset{k \in K}{\otimes} N_k}
+    \left( 
+	\log \left[ 1 + \exp \left( \sum_{k \in K} x^\top_{i, G_k} \beta_{G_k} \right) \right] 
+    \right)
+\end{equation}
+where $K = \{k : \gamma_k \geq t \}$ for some threshold $t$.
+
+
+
 

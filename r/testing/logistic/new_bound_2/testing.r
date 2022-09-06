@@ -157,26 +157,30 @@ x2 <- rnorm(100000, 0, 1)
 
 cov(exp(-x1), x1 >= -x2)
 
-mu <- 1
+mu <- -11
 sig <- 2
-integrate(function(x) log(1 + exp(x + mu)) * dnorm(x, 0, sig), -10, 10)
+integrate(function(x) log(1 + exp(x + mu)) * dnorm(x, 0, sig), -100, 100)
 integrate(function(x) log(1+ exp(x)) * dnorm(x, mu, sig), -10, 10)
 
 # this is part (a)
-integrate(function(x) (x + mu) * dnorm(x, 0, sig), -mu, Inf)
+integrate(function(x) (x + mu) * dnorm(x, 0, sig), -mu, Inf)$val
 sig / sqrt(2 * pi) * exp(-mu^2 / (2 * sig^2)) + mu * (pnorm(mu/sig))
 
-
-integrate(function(x) exp(mu + x) * dnorm(x, 0, sig), -Inf, -mu)
+# (b)
+integrate(function(x) exp(mu + x) * dnorm(x, 0, sig), -Inf, -mu)$val
 exp(mu + 0.5*sig^2) * pnorm(-mu/sig - sig)
 
-integrate(function(x) exp(- mu - x) * dnorm(x, 0, sig), -mu, Inf)
+# (c)
+integrate(function(x) exp(-(mu + x)) * dnorm(x, 0, sig), -mu, Inf)$val
+exp(-mu + 0.5*sig^2) * pnorm(mu/sig - sig)
+
 
 nb3 <- function(mu, sig) {
-    sig / sqrt(2 * pi) * exp(-mu^2 / (2 * sig^2)) + mu * (1 - pnorm(-mu/sig)) +
+    sig / sqrt(2 * pi) * exp(-mu^2 / (2 * sig^2)) + mu * pnorm(mu/sig) +
     exp(mu + 0.5*sig^2) * pnorm(-mu/sig - sig) +
     exp(-mu + 0.5*sig^2) * pnorm(mu/sig - sig)
 }
+
 
 integrate(function(x) log(1 + exp(x)) * dnorm(x, mu, sig), -50, 50)
 
@@ -200,4 +204,86 @@ for (mu in c(-5, 0, 5)) {
     }
 }
 dev.off()
+
+# ----------------------------------------
+#
+# ----------------------------------------
+mus <- seq(-5, 5, length.out=40)
+sig <- 0.5
+res <- sapply(mus, function(mu) 
+{
+    c(
+      integrate(expec, -50, 50, subdivisions=5e5, mu=mu, sig=sig)$value,
+      optim(1, jaak, method="Brent", lower=-4, upper=4, mu=mu, sig=sig)$val,
+      nb3(mu, sig)
+    )
+})
+layout(1)
+rr <- apply(res[2:3, ], 1,  function(r) log10(r - res[1, ]))
+matplot(mus, rr, type="l", lwd=3, lty=1, col=c(2,3), xlab=expression(mu), 
+	ylab="log10 error", main=sprintf("Sig: %.2f", sig))
+
+G <- which(!!b)
+X <- X[ , G]
+m <- m[G]
+s <- s[G]
+
+
+jaak <- function(l, mu, sig) {
+    -log(sigmoid(l)) + (mu + l)/2 + (sigmoid(l) - 0.5)/(2*l) * ((sig^2 + mu^2) - l^2)
+}
+
+
+tvals <- sapply(1:n, function(i) {
+    mu <- sum((X[i, ] + 4) * m)
+    sig <- sqrt(sum((X[i, ]^2 + 4) * s^2))
+    integrate(function(x) log(1 + exp(x + mu)) * dnorm(x, 0, sig), -100, 100)$val
+})
+
+
+jvals <- sapply(1:n, function(i) {
+    mu <- sum((X[i, ] + 4) * m)
+    sig <- sqrt(sum((X[i, ] + 4)^2 * s^2))
+    optim(1, jaak, mu=mu, sig=sig)$val
+})
+
+mus <- (X[, ] + 4) %*% m
+nvals <- nb3(mus, sqrt((X[, ] + 4)^2 %*% s^2))
+
+sigmoid <- function(l) 1/(1+exp(-l))
+
+
+plot(nb, jvals)
+
+sum(nb[nb <= jvals])
+sum(nb[nb > jvals])
+
+sum(jvals[nb <= jvals])
+sum(jvals[nb > jvals])
+
+plot(nb - tvals, col=1 + (abs(mus) > 1.5))
+plot(jvals - tvals, col=1 + (abs(mus) > 1.5))
+plot(jvals - nb, col=1 + (abs(mus) > 1.5))
+
+mus <- X[ , Gs] %*% m[Gs]
+sigs <- sqrt(X[ , Gs]^2 %*% s[Gs]^2)
+
+jvals <- sapply(1:n, function(i) {
+    mu <- mus[i]
+    sig <- sigs[i]
+    optim(1, jaak, mu=mu, sig=sig)$val
+})
+
+nvals <- nb3(mus, sigs)
+
+plot(jvals - nvals)
+
+
+mu = 0
+sig <- 0.7
+integrate(expec, -50, 50, subdivisions=5e5, mu=mu, sig=sig)$value
+optim(1, jaak, method="Brent", lower=-4, upper=4, mu=mu, sig=sig)$val
+nb3(mu, sig)
+
+
 
