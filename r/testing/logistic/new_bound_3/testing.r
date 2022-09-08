@@ -61,6 +61,21 @@ integrate(expec, -100, 100, mu=mu, sig=sig)
 
 
 # ----------------------------------------
+# Test compuation C++
+# ----------------------------------------
+Rcpp::sourceCpp("../new_bound_3/bound.cpp")
+
+tll(1:10, 1:10, 30)
+sum(sapply(1:10, function(i) new_bound(i, i, 30*2 - 1)))
+
+# about x2 faster for C++
+microbenchmark::microbenchmark(
+    tll(1:10, 1:10, 30),
+    sum(sapply(1:10, function(i) new_bound(i, i, 30*2 - 1)))
+)
+
+
+# ----------------------------------------
 # Comparison to other bounds
 # ----------------------------------------
 library(latex2exp)
@@ -115,7 +130,7 @@ dev.off()
 
 
 # ----------------------------------------
-#
+# Testing number of terms needed
 # ----------------------------------------
 mus <- seq(-5, 5, by=0.5)
 sigs <- seq(0.5, 5, by=0.5)
@@ -154,13 +169,14 @@ dev.off()
 # ----------------------------------------
 set.seed(1)
 g <- c(runif(90, 0, 0.1), runif(5, 0.95, 1), runif(5, 0.1, 0.9))
-g <- f$g[!duplicated(groups)]
 plot(sort(g))
 
+g <- f$g[!duplicated(groups)]
 gs <- sort(g)
 ogs <- order(g)
 
-while(any(cumprod(gs) <= 2.2e-10)) {
+while(any(cumprod(gs) <= 2.2e-10)) 
+{
     ogs <- ogs[cumprod(gs) <= 2.2e-10]
     gs <- gs[cumprod(gs) <= 2.2e-10]
 }
@@ -178,63 +194,78 @@ fs <- apply(S, 1, function(s) {
     prod(gs^s * (1-gs)^(1-s))
 })
 
-SS <- as.matrix(S[fs >= 1e-4, ])
-rownames(SS) <- NULL
-nrow(SS)
-
-m <- f$m
-s <- f$s
 
 xm.G <- sapply(unique(groups), function(group) {
     G <- which(groups == group)
     X[ , G] %*% m[G]
 })
 
-
 xs.G <- sapply(unique(groups), function(group) {
     G <- which(groups == group)
     sqrt(X[ , G]^2 %*% s[G]^2)
 })
 
-
-rr <- apply(SS, 1, function(s) {
-    j <- ogs[!!s]
-    res <- sapply(1:n, function(i) {
-	mu <- sum(xm.G[i, j])
-	sig <- sqrt(sum(xs.G[i, j]^2))
-	new_bound(mu, sig, 101)
-    })
-    prod(gs^s * (1-gs)^(1-s)) *  sum(res)
-})
-
-
 mid <- which(g <= 0.98 & g >= 0.020)
 big <- which(g > 0.98)
-SSS <- expand.grid(c(0,1), c(0,1), c(0,1))
-gss <- g[mid]
+tot <- 0
+gk <- g[mid]
 
-rrr <- apply(SSS, 1, function(s) {
-    j <- mid[!!s]
-    j <- c(j, big)
-    print(s)
-    res <- sapply(1:n, function(i) {
+for (i in 0:(2^length(mid)-1)) 
+{
+    sk <- as.integer(intToBits(i)[1:3])
+    j <- c(mid[!!sk], big)
+
+    res <- sapply(1:n, function(i) 
+    {
 	mu <- sum(xm.G[i, j])
 	sig <- sqrt(sum(xs.G[i, j]^2))
 	new_bound(mu, sig, 101)
     })
-    prod(gss^s * (1-gss)^(1-s)) *  sum(res)
+    
+    tot <- tot + prod(gk^sk * (1 - gk)^(1 - sk)) *  sum(res)
+}
+
+
+# ----------------------------------------
+# Testing computation for SpSL
+# ----------------------------------------
+e_ll <- function(X.m, X.s, g, tau, groups)
+{
+    g <- g[!duplicated(groups)]
+    mid <- which(g >= tau & g <= (1-tau))
+    big <- which(g > (1-tau))
+    gk <- g[mid]
+    tot <- 0
+
+    for (i in 0:(2^length(mid)-1)) 
+    {
+	sk <- as.integer(intToBits(i)[1:length(mid)])
+	J <- c(mid[!!sk], big)
+	mu <- apply(X.m[ , J], 1, sum)
+	sig <- sqrt(apply(X.s[ , J], 1, sum))
+
+	res <- tll(mu, sig, 101)
+	tot <- tot + prod(gk^sk * (1 - gk)^(1 - sk)) *  sum(res)
+    }
+
+    tot
+}
+
+m <- f$m
+s <- f$s
+g <- f$g
+
+Xm <- sapply(unique(groups), function(group) {
+    G <- which(groups == group)
+    X[ , G] %*% m[G]
 })
 
-sum(rrr)
+Xs <- sapply(unique(groups), function(group) {
+    G <- which(groups == group)
+    X[ , G]^2 %*% s[G]^2
+})
+
+e_ll(Xm, Xs, g, 0.025, groups)
 
 
-
-cbind(SS, rr)
-
-sum(rr)
-
-plot(cumsum(sort(rr)))
-cbind(S[fs >= 1e-3, ], fs[fs >= 1e-3])
-
-rep(c(0, 1), 14)
 
