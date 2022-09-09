@@ -118,7 +118,7 @@ opt_g <- function(y, X, XAX, m, s, g, G, Gc, lambda)
     res <- 
 	log(w / (1- w)) + 
 	0.5 * mk + 
-	0.5 * sum(log(2 * pi * s[G]^2)) +
+	0.5 * sum(log(2 * pi * s[G]^2)) -
 	Ck +
 	mk * log(lambda) -
 	lambda * sqrt(sum(s[G]^2) + sum(m[G]^2)) +

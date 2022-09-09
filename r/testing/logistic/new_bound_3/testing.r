@@ -74,6 +74,9 @@ microbenchmark::microbenchmark(
     sum(sapply(1:10, function(i) new_bound(i, i, 30*2 - 1)))
 )
 
+tll(1:10, 1:10, 30) ==
+sum(sapply(1:10, function(i) new_bound(i, i, 30*2 - 1)))
+
 
 # ----------------------------------------
 # Comparison to other bounds
@@ -251,10 +254,6 @@ e_ll <- function(X.m, X.s, g, tau, groups)
     tot
 }
 
-m <- f$m
-s <- f$s
-g <- f$g
-
 Xm <- sapply(unique(groups), function(group) {
     G <- which(groups == group)
     X[ , G] %*% m[G]
@@ -268,4 +267,163 @@ Xs <- sapply(unique(groups), function(group) {
 e_ll(Xm, Xs, g, 0.025, groups)
 
 
+# ----------------------------------------
+# Testing optimization
+# ----------------------------------------
+e_ll <- function(X.m, X.s, ug, tau, l=20)
+{
+    mid <- which(ug >= tau & ug <= (1-tau))
+    big <- which(ug > (1-tau))
+    gk <- ug[mid]
+    tot <- 0
+
+    if (length(mid) >= 10) print("shittles")
+    
+    if (length(mid) == 0) {
+	if (length(big) == 1) {
+	    mu <- X.m[ , big]
+	    sig <- sqrt(X.s[ , big])
+	} else {
+	    mu <- apply(X.m[ , big], 1, sum)
+	    sig <- sqrt(apply(X.s[ , big], 1, sum))
+	}
+	return(tll(mu, sig, l))
+    }
+
+    for (i in 0:(2^length(mid)-1)) 
+    {
+	sk <- as.integer(intToBits(i)[1:length(mid)])
+	J <- c(mid[!!sk], big)
+	
+	if (length(J) == 1) {
+	    mu <- X.m[ , J]
+	    sig <- sqrt(X.s[ , J])
+	} else {
+	    mu <- apply(X.m[ , J], 1, sum)
+	    sig <- sqrt(apply(X.s[ , J], 1, sum))
+	}
+
+	res <- tll(mu, sig, l)
+	tot <- tot + prod(gk^sk * (1 - gk)^(1 - sk)) *  sum(res)
+    }
+
+    tot
+}
+
+nb3 <- function(mu, sig, p=21) {
+    l <- 1:p
+    sig / sqrt(2 * pi) * exp(-mu^2 / (2 * sig^2)) + mu * pnorm(mu/sig) +
+    sapply(1:length(mu), function(i) {
+	sum(
+	    (-1)^(l-1) / l * exp(mu[i]*l + 0.5*l^2*sig[i]^2 + 
+		pnorm(-mu[i]/sig[i] - l*sig[i], log.p=T)) +
+	    (-1)^(l-1) / l * exp(-mu[i]*l + 0.5*l^2*sig[i]^2 + 
+		pnorm(mu[i]/sig[i] - l*sig[i], log.p=T))
+	)
+    })
+}
+
+opt_mu <- function(m_G, y, X, m, s, g, G, lambda, tau, p) 
+{
+    m[G] <- m_G 
+    J <- union(G, which(g >= tau))
+
+    mu <- X[ , J] %*% m[J]
+    sig <- sqrt(X[ , J]^2 %*% s[J]^2)
+
+    sum(nb3(mu, sig, p))  -
+    sum(y * (X[ , G] %*% m[G])) +
+    lambda * sqrt(sum(s[G]^2) + sum(m_G^2))
+}
+
+opt_mu_ell <- function(m_G, y, X, m, s, ug, lambda, group, G,
+    X.m, X.s, thresh=0.02, l=20) 
+{
+    m[G] <- m_G
+    ug[group] <- 1
+
+    xm <- X[ , G] %*% m[G]
+    X.m[ , group] <- xm
+
+    e_ll(X.m, X.s, ug, thresh, l) -
+    sum(y * xm) +
+    lambda * sqrt(sum(s[G]^2) + sum(m_G^2))
+}
+
+
+m <- f$m
+s <- f$s
+g <- f$g
+g <- +!!b
+ug <- g[!duplicated(groups)]
+
+X.m <- sapply(unique(groups), function(group) {
+    G <- which(groups == group)
+    X[ , G] %*% m[G]
+})
+
+X.s <- sapply(unique(groups), function(group) {
+    G <- which(groups == group)
+    X[ , G]^2 %*% s[G]^2
+})
+
+G <- 1:5
+group <- 1
+
+opt_mu(1:5, y, X, m, s, g, G, lambda, 0.02, 41)
+opt_mu_ell(1:5, y, X, m, s, ug, lambda, group, G, X.m, X.s)
+
+microbenchmark::microbenchmark(
+    optim(m[G], 
+	fn=function(mG) opt_mu_ell(mG, y, X, m, s, ug, lambda, group,
+		G, X.m, X.s),
+	control=list(maxit=30),
+	method="BFGS"),
+    optim(m[G], 
+	fn=function(mG) opt_mu(mG, y, X, m, s, g, G, lambda, 0.02, 41),
+	control=list(maxit=30),
+	method="BFGS")
+)
+
+
+# ----------------------------------------
+# Testing opt_g
+# ----------------------------------------
+opt_g <- function(y, X, m, s, ug, lambda, group, G, X.m, X.s,
+	tau=0.02, l=20)
+{
+    mk <- length(G)
+    Ck <- mk * log(2) + 0.5 * (mk -1) * log(pi) + lgamma(0.5 * (mk + 1))
+
+    ug[group] <- 1
+    S1 <- e_ll(X.m, X.s, ug, tau, l)
+
+    ug[group] <- 0
+    S0 <- e_ll(X.m, X.s, ug, tau, l)
+
+    res <- 
+	log(w / (1 - w)) + 
+	0.5 * mk -
+	Ck +
+	mk * log(lambda) +
+	0.5 * sum(log(2 * pi * s[G]^2)) -
+	lambda * sqrt(sum(s[G]^2) + sum(m[G]^2)) - 
+	S1 + sum(y * (X[ , G] %*% m[G])) + S0
+
+    sigmoid(res)
+}
+
+
+group <- 4
+G <- which(groups == group)
+opt_g(y, X, m, s, ug, lambda, group, G, X.m, X.s, tau)
+
+group <- 1
+ug[group] <- 1
+G <- which(groups == group)
+opt_mu(m[G], y, X, m, s, ug, lambda, group, G, X.m, X.s, 0.02, 10)
+
+group <- 1
+ug[group] <- 1
+e_ll(X.m, X.s, ug, tau, l)
 
