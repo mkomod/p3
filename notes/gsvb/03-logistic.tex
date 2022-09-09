@@ -321,13 +321,20 @@ A new bound 2 is not so good
 We introduce a new bound. Formally, let $\X \sim N(\mu, \sigma^2)$, then
 \begin{equation} \label{eq:new_tight}
 \begin{aligned}
-    \E_\X \left[ \log(1 + \exp(x)) \right] \leq
-	\frac{\sigma}{\sqrt{2\pi}} e^{- \frac{\mu^2}{2 \sigma^2}}
-	+ \mu \Phi \left(\frac{\mu}{\sigma} \right)
-	+ e^{\mu + \sigma^2 / 2 }  \Phi \left( -\frac{\mu}{\sigma} - \sigma \right) \\
-	+ e^{-\mu + \sigma^2 /2 } \Phi \left( \frac{\mu}{\sigma} - \sigma \right)
+    \E_\X [ \log(1 + & \exp(x)) ]
+	\leq
+	    \frac{\sigma}{\sqrt{2\pi}} e^{- \frac{\mu^2}{2 \sigma^2}}
+	    + \mu \Phi \left(\frac{\mu}{\sigma} \right) 
+	\\
+	+ &\
+	    \sum_{t=1}^{2l-1} 
+		\frac{(-1)^{t-1}}{t} \left(
+		    e^{t \mu + t^2 \sigma^2 / 2 }  \Phi \left( -\frac{\mu}{\sigma} - t \sigma \right) 
+		  + e^{-t \mu + t^2 \sigma^2 /2 } \Phi \left( \frac{\mu}{\sigma} -  t \sigma \right)
+		\right)
 \end{aligned}
 \end{equation}
+for $l \geq 1$
 
 \textit{Proof.} Write $\boldsymbol{Z} = \X - \mu$ and denote the density of $\boldsymbol{Z}$ as $\phi_z$. It follows that,
 {\allowdisplaybreaks %
@@ -342,28 +349,47 @@ We introduce a new bound. Formally, let $\X \sim N(\mu, \sigma^2)$, then
     \nonumber
     \\
     =&\ 
-	\int_{-\mu}^\infty (z + \mu) \phi_z  
-	+ \int_{-\mu}^\infty + \log[1 + \exp(-(z+\mu))] \phi_z dz 
+	\int_{-\mu}^\infty (z + \mu) \phi_z dz
+	+ \int_{-\mu}^\infty \log[1 + \exp(-(z+\mu))] \phi_z dz 
     \nonumber \\
     +&\ \int_{-\infty}^{-\mu} \log(1 + \exp(z + \mu))\phi_z dz
     \nonumber
     \\
     \leq &\ 
-	\int_{-\mu}^\infty (z + \mu) \phi_z  
-	+ \int_{-\mu}^\infty \exp(-(z+\mu)) \phi_z dz 
-	+ \int_{-\infty}^{-\mu} \exp(z + \mu)) \phi_z dz
+	\int_{-\mu}^\infty (z + \mu) \phi_z dz
+	+ \sum_{t-1}^{2l-1} \frac{-1^{t-1}}{t} \Big(
+		\int_{-\mu}^\infty \exp(-t(z+\mu)) \phi_z dz 
+    \nonumber
+    \\
+	+&\ \int_{-\infty}^{-\mu} \exp(t(z + \mu)) \phi_z dz
+	\Big)
     \nonumber
 \end{align}%
 } %
-where the inequality follows from $\log(1+x) \leq x$ for $x \in [0, 1]$, and \eqref{eq:new_tight} follows from the fact that $\phi(z)' = - z\phi(z) / \sigma^2 $ and $ \int_{a}^b e^{tz} \phi_z dz = e^{\sigma^2 t^2 / 2} \left[ \Phi(b/\sigma - t \sigma) - \Phi(a/\sigma - t\sigma) \right]$. $\qed$
+where the inequality follows from the truncated Maclaurin series of $\log(1+x) \leq \sum_{t=1}^{2l-1} (-1)^{t-1}x/t$ for $x \in [0, 1]$, $l\geq 1$, and \eqref{eq:new_tight} follows from the fact that $\phi(z)' = - z\phi(z) / \sigma^2 $ and $ \int_{a}^b e^{tz} \phi_z dz = e^{\sigma^2 t^2 / 2} \left[ \Phi(b/\sigma - t \sigma) - \Phi(a/\sigma - t\sigma) \right]$. $\qed$
 
-Comparing our new bound and the bound introduced by \citep{Jakkola97}, against the value computed using quadrature (\Cref{fig:bound_comp}), we notice our new bound is orders of magnitude better, expect for the when the mean and standard deviation is are small.
-\begin{figure}[hb]
+Comparing our new bound and the bound introduced by \citep{Jakkola97}, against the value computed using quadrature (\Cref{fig:bound_comp_sig}), we notice our new bound is tighter, particularly when the absolute mean is large. 
+% \begin{figure}[hb]
+%     \centering
+%     \includegraphics[width=\textwidth]{./figures/comp_new_bound.pdf}
+%     \caption{Comparison of bound against \citep{Jakkola97}}
+%     \label{fig:bound_comp}
+% \end{figure}
+\begin{figure}[htp]
     \centering
-    \includegraphics[width=\textwidth]{./figures/comp_new_bound.pdf}
-    \caption{Comparison of bound against \citep{Jakkola97}}
-    \label{fig:bound_comp}
+    \includegraphics[width=\textwidth]{./figures/comp_new_bound_sig.pdf}
+    \caption{Comparison of bound against \citep{Jakkola97}, for $l=8$}
+    \label{fig:bound_comp_sig}
 \end{figure}
+
+\begin{figure}[htp]
+    \centering
+    \includegraphics[width=.8\textwidth]{./figures/opt_l.pdf}
+    \caption{Value of $l$ needed to achieve an error less than $0.01$}
+    \label{fig:opt_l}
+\end{figure}
+
+\break
 
 Finally, to employ the bound in the context of our spike-and-slab variational family, we note that, $\E_Q \log ( 1 + \exp (x_i^\top \beta))$ can be written as,
 \begin{equation} \label{eq:ll_expectation}
@@ -375,7 +401,7 @@ Finally, to employ the bound in the context of our spike-and-slab variational fa
 	\log \left[ 1 + \exp \left( \sum_{j \in J} x^\top_{i, G_j} \beta_{G_j} \right) \right] 
     \right)
 \end{equation}
-where $ S = \{0, 1\}^{M}$ and $J_s = \{j : s_j = 1, j=1,\dots,M \}$. Evidently, there are $2^M$ terms in \eqref{eq:ll_expectation}, meaning for large $M$ the expression is computationally intractable. To work around this limitation, recall, we are assuming there is sparsity in the true coefficient vector, therefore many of the $\gamma_k$s will be close to zero and few will be close to one, meaning \eqref{eq:ll_expectation} can be approximated by
+where $ S = \{0, 1\}^{M}$ and $J_s = \{j : s_j = 1, j=1,\dots,M \}$. Evidently, there are $2^M$ terms in \eqref{eq:ll_expectation}, meaning for large $M$ the expression is computationally intractable. To work around this limitation, we use the underlying assumption of sparsity. By which we mean, many of the $\gamma_k$s will be close to zero and few will be close to one, allowing us to threshold the $\gamma_k$s and approximate \eqref{eq:ll_expectation} by,
 \begin{equation}
     \E_{\underset{k \in K}{\otimes} N_k}
     \left( 
