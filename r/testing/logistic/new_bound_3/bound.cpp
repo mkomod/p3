@@ -41,7 +41,7 @@ arma::vec dt_dm(arma::mat X, arma::vec mu, arma::vec sig, arma::uvec G, int p)
     // gradient wrt. mu
     const int n = mu.n_rows;
     const int mk = G.n_rows;
-    arma::vec res = arma::vec(p, arma::fill::zeros);
+    arma::vec res = arma::vec(mk, arma::fill::zeros);
 
     for (int i = 0; i < n; ++i) 
     {
@@ -90,7 +90,7 @@ arma::vec dt_ds(arma::mat X, arma::vec s, arma::vec mu, arma::vec sig,
     // gradient wrt. s
     const int n = mu.n_rows;
     const int mk = G.n_rows;
-    arma::vec res = arma::vec(p, arma::fill::zeros);
+    arma::vec res = arma::vec(mk, arma::fill::zeros);
 
     for (int i = 0; i < n; ++i) 
     {
