@@ -96,7 +96,8 @@ arma::vec dt_ds(arma::mat X, arma::vec s, arma::vec mu, arma::vec sig,
     {
 	double dt_dsig = 0.0;
 
-	dt_dsig = 1.0 / sqrt(2.0 * M_PI) * (1/(sig(i)*sig(i)) + mu(i)*mu(i)) *
+	dt_dsig = 1.0 / sqrt(2.0 * M_PI) * 
+	    (1.0 + mu(i)*mu(i)/(sig(i)*sig(i))) *
 	    exp(- 0.5 * mu(i)*mu(i) / (sig(i)*sig(i))) -
 	    mu(i)*mu(i)/(sig(i)*sig(i)) * R::dnorm(mu(i) / sig(i), 0, 1, 0);
 
@@ -129,4 +130,6 @@ arma::vec dt_ds(arma::mat X, arma::vec s, arma::vec mu, arma::vec sig,
 
     return res;
 }
+
+
 

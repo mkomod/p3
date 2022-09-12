@@ -431,6 +431,7 @@ e_ll(X.m, X.s, ug, tau, l)
 # ----------------------------------------
 # Testing derivatives
 # ----------------------------------------
+# All gradients passing
 Rcpp::sourceCpp("../new_bound_3/bound.cpp")
 
 # testing against finite differences - PASS
@@ -439,11 +440,11 @@ sig <- sqrt(X[ , G]^2 %*% s[G]^2)
 t1 <- tll(mu, sig, 20)
 
 m.h <- m[G]
-m.h[1] <- m.h[1] - 1e-10
+m.h[1] <- m.h[1] - 1e-8
 mu.h <- X[ , G] %*% m.h[G]
 t2 <- tll(mu.h, sig, 20)
 
-(t1 - t2) / 1e-10
+(t1 - t2) / 1e-8
 dt_dm(X, mu, sig, G-1, 20)[1]
 
 # testing for larger group - PASS
@@ -453,23 +454,40 @@ t1 <- tll(mu, sig, 20)
 
 GG <- 1:15
 m.h <- m[GG]
-m.h[1] <- m.h[1] - 1e-10
+m.h[1] <- m.h[1] - 1e-8
 mu.h <- apply(X[ , GG] %*% m.h[GG], 1, sum)
 t2 <- tll(mu.h, sig, 20)
 
-(t1 - t2) / 1e-10
+(t1 - t2) / 1e-8
 dt_dm(X, mu, sig, G-1, 20)
 
-# testing sigma
+# testing sigma - PASS
 mu <- X[ , G] %*% m[G]
 sig <- sqrt(X[ , G]^2 %*% s[G]^2)
 t1 <- tll(mu, sig, 20)
 
 s.h <- s[G]
-s.h[1] <- s.h[1] - 1e-10
+s.h[1] <- s.h[1] - 1e-8
 sig.h <- sqrt(X[ , G]^2 %*% s.h[G]^2)
 t2 <- tll(mu, sig.h, 20)
 
-(t1 - t2) / 1e-10
-dt_ds(X, s, mu, sig, G-1, 20)[1]
+(t1 - t2) / 1e-8
+dt_ds(X, s, mu, sig, G-1, 20)
+
+
+# testing sigma for large group - PASS
+mu <- apply(X.m[ , 1:3], 1, sum)
+sig <- sqrt(apply(X.s[ , 1:3], 1, sum))
+t1 <- tll(mu, sig, 20)
+
+GG <- 1:15
+s.h <- s[GG]
+s.h[2] <- s.h[2] - 1e-8
+sig.h <- sqrt(apply(X[ , GG]^2 %*% s.h^2, 1, sum))
+t2 <- tll(mu, sig.h, 20)
+
+(t1 - t2) / 1e-8
+dt_ds(X, s, mu, sig, G-1, 20)
+
+
 

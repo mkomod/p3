@@ -182,7 +182,7 @@ e_ll <- function(X.m, X.s, ug, tau, l=20)
 	}
 
 	res <- tll(mu, sig, l)
-	tot <- tot + prod(gk^sk * (1 - gk)^(1 - sk)) *  sum(res)
+	tot <- tot + prod(gk^sk * (1 - gk)^(1 - sk)) * res
     }
 
     tot
