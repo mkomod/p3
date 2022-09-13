@@ -490,4 +490,23 @@ t2 <- tll(mu, sig.h, 20)
 dt_ds(X, s, mu, sig, G-1, 20)
 
 
+# ----------------------------------------
+# test compute ell C++ impl
+# ----------------------------------------
+Rcpp::sourceCpp("../new_bound_3/bound.cpp")
+
+oldug <- ug
+ug <- f$g[!duplicated(groups)]
+
+e_ll(X.m, X.s, ug, 0.02, 20)
+ell(X.m, X.s, ug, 0.02, 20)
+
+microbenchmark::microbenchmark(
+    e_ll(X.m, X.s, ug, 0.02, 20),
+    ell(X.m, X.s, ug, 0.02, 20)
+)
+
+dell_dm(X, X.m, X.s, ug, G-1, 0.02, 20);
+dell_ds(X, X.m, X.s, s, ug, G-1, 0.02, 20);
+
 

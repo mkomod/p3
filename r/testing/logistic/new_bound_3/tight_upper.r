@@ -95,7 +95,7 @@ w <- a0 / (a0 + b0)
 
 
 opt_mu <- function(m_G, y, X, m, s, ug, lambda, group, G,
-    X.m, X.s, thresh=0.02, l=20) 
+    X.m, X.s, thresh=0.02, l=50) 
 {
     ug[group] <- 1
     m[G] <- m_G
@@ -110,7 +110,7 @@ opt_mu <- function(m_G, y, X, m, s, ug, lambda, group, G,
 
 
 opt_s <- function(s_G, X, m, s, ug, lambda, group, G,
-    X.m, X.s, thresh=0.02, l=20) 
+    X.m, X.s, thresh=0.02, l=50) 
 {
     ug[group] <- 1
     s[G] <- s_G 
@@ -125,7 +125,7 @@ opt_s <- function(s_G, X, m, s, ug, lambda, group, G,
 
 
 opt_g <- function(y, X, m, s, ug, lambda, group, G, X.m, X.s,
-	tau=0.02, l=20)
+	tau=0.02, l=50)
 {
     mk <- length(G)
     Ck <- mk * log(2) + (mk -1)/2 * log(pi) + lgamma( (mk + 1) / 2)
