@@ -441,7 +441,7 @@ t1 <- tll(mu, sig, 20)
 
 m.h <- m[G]
 m.h[1] <- m.h[1] - 1e-8
-mu.h <- X[ , G] %*% m.h[G]
+mu.h <- X[ , G] %*% m.h
 t2 <- tll(mu.h, sig, 20)
 
 (t1 - t2) / 1e-8
@@ -468,7 +468,7 @@ t1 <- tll(mu, sig, 20)
 
 s.h <- s[G]
 s.h[1] <- s.h[1] - 1e-8
-sig.h <- sqrt(X[ , G]^2 %*% s.h[G]^2)
+sig.h <- sqrt(X[ , G]^2 %*% s.h^2)
 t2 <- tll(mu, sig.h, 20)
 
 (t1 - t2) / 1e-8
@@ -487,7 +487,7 @@ sig.h <- sqrt(apply(X[ , GG]^2 %*% s.h^2, 1, sum))
 t2 <- tll(mu, sig.h, 20)
 
 (t1 - t2) / 1e-8
-dt_ds(X, s, mu, sig, G-1, 20)
+dt_ds(X, s, mu, sig, 1:10-1, 20)
 
 
 # ----------------------------------------
@@ -498,6 +498,7 @@ Rcpp::sourceCpp("../new_bound_3/bound.cpp")
 oldug <- ug
 ug <- f$g[!duplicated(groups)]
 
+mu <- X[ , G] %*% m[G]
 e_ll(X.m, X.s, ug, 0.02, 20)
 ell(X.m, X.s, ug, 0.02, 20)
 
@@ -506,7 +507,87 @@ microbenchmark::microbenchmark(
     ell(X.m, X.s, ug, 0.02, 20)
 )
 
-dell_dm(X, X.m, X.s, ug, G-1, 0.02, 20);
-dell_ds(X, X.m, X.s, s, ug, G-1, 0.02, 20);
+
+# ----------------------------------------
+# Testing opt_mu C++
+# ----------------------------------------
+Rcpp::sourceCpp("../new_bound_3/bound.cpp")
+group = 3
+G <- 6:10
+G <- 1:5
+G <- 11:15
+ug[group]
+
+a <- opt_m_cpp(y, X, m, s, ug, lambda, group-1, G-1, X.m, X.s, 0.02, 20)
+aa <- optim(m[G], 
+    fn=function(mG)  {
+	opt_mu(mG, y, X, m, s, ug, lambda, group, G, X.m, X.s)
+	# ug[group] <- 1
+	# m[G] <- mG
+	# fn_mu(y, X, X.m, X.s, ug, s, m, G-1, group-1, 0.02, 10, lambda);
+    },
+    control=list(maxit=300),
+    method="BFGS")$par
+a
+aa
+
+
+
+
+bb <- optim(log(s[G]), 
+    fn=function(u) {
+	sG <- exp(u)
+	# opt_s(sG, X, m, s, ug, lambda, group, G, X.m, X.s)
+	ug[group] <- 1
+	xs <- X[ , G]^2 %*% sG^2
+	X.s[ , group] <- xs
+
+	print(fns(sG, X.m, X.s, m, ug, 0.02, 20, 1, G-1))
+    },
+    gr=function(u) {
+	s[G] <- exp(u) 
+	(dell_ds(X, X.m, X.s, s, ug, G-1, 0.02, 20) -
+	1/s[G] + lambda * s[G] * (sum(s[G]^2) + sum(m[G]^2))^-0.5) * s[G]
+    },
+    control=list(maxit=300),
+    method="L-BFGS")$par
+
+    # method="L-BFGS-B", lower=1e-3, upper=s[G][1] + 0.2)$par
+
+exp(bb)
+
+
+bb <- optim(log(s[G]), 
+    fn=function(u) {
+	sG <- exp(u)
+	# opt_s(sG, X, m, s, ug, lambda, group, G, X.m, X.s)
+	ug[group] <- 1
+	xs <- X[ , G]^2 %*% sG^2
+	X.s[ , group] <- xs
+
+	ell(X.m, X.s, ug, 0.02, 20) - sum(log(sG)) +
+	lambda * sqrt(sum(s[G]^2 + m[G]^2))
+    },
+    control=list(maxit=300),
+    method="L-BFGS")$par
+
+cc <- opt_s_cpp(y, X, m, s, ug, lambda, group-1, G-1, X.m, X.s, 0.02, 20)
+exp(bb)
+t(cc)
+
+s[G] <- bb
+s[G] <- cc
+
+
+opt_m_cpp(y, X, m, s, ug, lambda, group-1, G-1, X.m, X.s, 0.02, 20)
+opt_s_cpp(y, X, m, s, ug, lambda, group-1, G-1, X.m, X.s, 0.02, 20)
+
+opt_g(y, X, m, s, ug, lambda, group, G, X.m, X.s, l=40)
+opt_g_cpp(y, X, m, s, ug, lambda, group-1, G-1, X.m, X.s, 0.02, 20, w)
+
+microbenchmark::microbenchmark(
+    opt_g(y, X, m, s, ug, lambda, group, G, X.m, X.s, l=40),
+    opt_g_cpp(y, X, m, s, ug, lambda, group-1, G-1, X.m, X.s, 0.02, 20, w)
+)
 
 

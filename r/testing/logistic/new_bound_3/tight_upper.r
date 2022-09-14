@@ -61,38 +61,42 @@ w <- a0 / (a0 + b0)
 	    G <- which(groups == group)
 	    Gc <- which(groups != group)
 
-	    m[G] <- optim(m[G], 
-		fn=function(mG) opt_mu(mG, y, X, m, s, ug, lambda, group,
-			G, X.m, X.s),
-		control=list(maxit=10),
-		method="BFGS")$par
-
+	    # m[G] <- optim(m[G], 
+		# fn=function(mG) opt_mu(mG, y, X, m, s, ug, lambda, group,
+			# G, X.m, X.s),
+		# control=list(maxit=10),
+		# method="BFGS")$par
+	    m[G] <- opt_m_cpp(y, X, m, s, ug, lambda, group-1, G-1, X.m, X.s, 0.02, 20)
 	    X.m[ , group] <- X[ , G] %*% m[G]
+	    
+	    plot(m)
+	    # s[G] <- optim(s[G], 
+		# fn=function(sG) opt_s(sG, X, m, s, ug, lambda, group,
+			# G, X.m, X.s),
+		# control=list(maxit=10),
+		# method="L-BFGS-B", lower=1e-3, upper=s[G][1] + 0.2)$par
 
-	    s[G] <- optim(s[G], 
-		fn=function(sG) opt_s(sG, X, m, s, ug, lambda, group,
-			G, X.m, X.s),
-		control=list(maxit=10),
-		method="L-BFGS-B", lower=1e-3, upper=s[G][1] + 0.2)$par
-
+	    s[G] <- opt_s_cpp(y, X, m, s, ug, lambda, group-1, G-1, X.m, X.s, 0.02, 20)
 	    X.s[ , group] <- X[ , G]^2 %*% s[G]^2
 
-	    g[G] <- ug[group] <- opt_g(y, X, m, s, ug, lambda, group, G,
-		X.m, X.s)
+	    # g[G] <- ug[group] <- opt_g(y, X, m, s, ug, lambda, group, G,
+		# X.m, X.s)
+
+	    g[G] <- ug[group] <- opt_g_cpp(y, X, m, s, ug, lambda, group-1,
+		G-1, X.m, X.s, 0.02, 20, w)
 	}
 
 	M <- cbind(M, m)
 	Sig <- cbind(Sig, s)
 	Gpr <- cbind(Gpr, g)
 
-	matplot(t(M), type="l")
+	# matplot(t(M), type="l")
 	cat("\niter: ", iter)
     }
     
     # return(list(m=m, s=s, g=g, M=M, Sig=Sig, Gpr=Gpr))
 
 # }
-
 
 opt_mu <- function(m_G, y, X, m, s, ug, lambda, group, G,
     X.m, X.s, thresh=0.02, l=50) 
@@ -103,7 +107,11 @@ opt_mu <- function(m_G, y, X, m, s, ug, lambda, group, G,
     xm <- X[ , G] %*% m[G]
     X.m[ , group] <- xm
 
-    e_ll(X.m, X.s, ug, thresh, l) -
+    # print(e_ll(X.m, X.s, ug, thresh, l))
+    # print(sum(y * xm))
+    # print(lambda * sqrt(sum(s[G]^2) + sum(m_G^2)))
+
+    ell(X.m, X.s, ug, thresh, l) -
     sum(y * xm) +
     lambda * sqrt(sum(s[G]^2) + sum(m_G^2))
 }
@@ -115,10 +123,10 @@ opt_s <- function(s_G, X, m, s, ug, lambda, group, G,
     ug[group] <- 1
     s[G] <- s_G 
 
-    xs <- sqrt(X[ , G]^2 %*% s[G]^2)
+    xs <- X[ , G]^2 %*% s[G]^2
     X.s[ , group] <- xs
 
-    e_ll(X.m, X.s, ug, thresh, l) -
+    ell(X.m, X.s, ug, thresh, l) -
     sum(log(s_G)) +
     lambda * sqrt(sum(s_G^2) + sum(m[G]^2))
 }
@@ -148,45 +156,6 @@ opt_g <- function(y, X, m, s, ug, lambda, group, G, X.m, X.s,
     sigmoid(res)
 }
 
-e_ll <- function(X.m, X.s, ug, tau, l=20)
-{
-    mid <- which(ug >= tau & ug <= (1-tau))
-    big <- which(ug > (1-tau))
-    gk <- ug[mid]
-    tot <- 0
-
-    if (length(mid) >= 10) print("shittles")
-    
-    if (length(mid) == 0) {
-	if (length(big) == 1) {
-	    mu <- X.m[ , big]
-	    sig <- sqrt(X.s[ , big])
-	} else {
-	    mu <- apply(X.m[ , big], 1, sum)
-	    sig <- sqrt(apply(X.s[ , big], 1, sum))
-	}
-	return(tll(mu, sig, l))
-    }
-
-    for (i in 0:(2^length(mid)-1)) 
-    {
-	sk <- as.integer(intToBits(i)[1:length(mid)])
-	J <- c(mid[!!sk], big)
-	
-	if (length(J) == 1) {
-	    mu <- X.m[ , J]
-	    sig <- sqrt(X.s[ , J])
-	} else {
-	    mu <- apply(X.m[ , J], 1, sum)
-	    sig <- sqrt(apply(X.s[ , J], 1, sum))
-	}
-
-	res <- tll(mu, sig, l)
-	tot <- tot + prod(gk^sk * (1 - gk)^(1 - sk)) * res
-    }
-
-    tot
-}
 
 Rcpp::sourceCpp("../new_bound_3/bound.cpp")
 
