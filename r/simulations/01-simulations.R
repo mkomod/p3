@@ -24,13 +24,15 @@ dg <- list(
     p=c(
 	dgp_diag,
 	dgp_diag,
-	dgp_block
+	dgp_block,
+	dgp_wishart
     ),
     # settings for each process
     s=list(
 	list(corr=0),
 	list(corr=0.6),
-	list(corr=0.6, block_size=50)
+	list(corr=0.6, block_size=50),
+	list(dof=3, weight=0.1)
     )
 )
 
@@ -65,6 +67,4 @@ for (i in DGP)
 	save(list=c(rname), file=sprintf("../../rdata/simulations/01/%s.RData", rname))
     }
 }
-
-
 

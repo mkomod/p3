@@ -77,6 +77,31 @@ dgp_block <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1)
 }
 
 
+dgp_wishart <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1)
+{
+    res <- .dgp_base(n, p, gsize, s, b, seed)
+
+    # unpack pars
+    dof <- pars[[1]]
+    weight <- pars[[2]]
+
+    S <- (1-weight)*solve(rWishart(1, p+dof, diag(rep(1, p)))[, , 1])
+    for (block in 1:(p / gsize)) {
+	# generate cov for group
+	S_g <- solve(rWishart(1, gsize+dof, diag(rep(1, gsize)))[, , 1])
+
+	G <- (1+(block-1)*gsize):(gsize*block)
+	S[G, G] <- S[G, G] + weight*S_g
+    }
+    X <- mvtnorm::rmvnorm(n, rep(0, p), sigma=S)
+
+    j <- which(res$groups %in% res$active_groups)
+    y <- X[ , j] %*% res$b[j] + rnorm(n, sd=sig)
+
+    return(c(res, list(X=X, y=y, seed=seed, sig=sig, corr=corr)))
+}
+
+
 # ----------------------------------------
 # Methods (parallelized)
 # ----------------------------------------
