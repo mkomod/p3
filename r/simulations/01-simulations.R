@@ -32,7 +32,7 @@ dg <- list(
 	list(corr=0),
 	list(corr=0.6),
 	list(corr=0.6, block_size=50),
-	list(dof=3, weight=0.1)
+	list(dof=3, weight=0.9)
     )
 )
 

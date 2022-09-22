@@ -31,3 +31,9 @@ f <- function(x)
 
 f(stop("123"))
 f(2)
+
+
+d <- dgp_wishart(200, 1000, 5, 3, list(dof=3, wieght=0.9))
+m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3)
+f <- m_gsvb(d)
+f <- gsvb::gsvb.fit(d$y, d$X, d$groups, intercept=TRUE, a0=1, b0=200, track_elbo=FALSE)

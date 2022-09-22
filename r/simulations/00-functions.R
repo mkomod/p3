@@ -77,7 +77,8 @@ dgp_block <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1)
 }
 
 
-dgp_wishart <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1)
+dgp_wishart <- function(n, p, gsize, s, pars=list(dof=3, weight=0.9), 
+    b=NULL, seed=1, sig=1)
 {
     res <- .dgp_base(n, p, gsize, s, b, seed)
 
@@ -98,7 +99,7 @@ dgp_wishart <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1)
     j <- which(res$groups %in% res$active_groups)
     y <- X[ , j] %*% res$b[j] + rnorm(n, sd=sig)
 
-    return(c(res, list(X=X, y=y, seed=seed, sig=sig, corr=corr)))
+    return(c(res, list(X=X, y=y, seed=seed, sig=sig, dof=dof, weight=weight)))
 }
 
 
