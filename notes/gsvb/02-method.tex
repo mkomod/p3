@@ -434,3 +434,48 @@ Finally, we note the algorithm can be sensitive to initialization of $\mu$, in o
 
 The implementation details under $\Q'$ are similar as above, however rather than update $\mu_{G_k}$ and $\Sigma_{G_k}$ directly, the parameters $\pi_{G_k}$ and $w_{G_k}$ are updated instead. The remaining parameters are updated as before using the modified update equations.
 
+
+\subsection{Variational posterior predictive distribution}
+
+As with traditional Bayesian methods we are able to obtain a posterior predictive distribution for a given feature vector $x^\ast \in \R^p$. Here however, we use the variational posterior and construct a variational posterior predictive distribution. Formally, we write this as,
+\begin{equation}
+    \tilde{p} (y^\ast | x^\ast, \D) 
+	= \int p(y^\ast | \beta, \tau^2, x^\ast, \D) \ d\tilde{\Pi}(\beta, \tau^2)
+\end{equation}
+Letting $t = \tau^2$ and recalling the independence of $\tau^2$ and $\beta$ in our variational family, we have,
+\begin{align}
+    \tilde{p} (y^\ast | x^\ast, \D) 
+    &\ \propto
+    \int \int t^{-(a' + 1/2) -1} \exp \left( - \frac{(y^\ast - x^{\ast \top} \beta)^2 + 2b'}{2 t} \right)
+    \ dt \ d\tilde{\Pi}(\beta)
+    \nonumber
+    \\
+    &\ \propto
+    \int \left(\frac{(y^\ast - x^{\ast \top} \beta)^2}{2b'} + 1 \right)^{-(a' + 1/2)} \ d\tilde{\Pi}(\beta)
+    \nonumber
+\end{align}
+Recognizing that the expression within the integral has the same functional form as a generalized $t$-distribution, whose density is denoted as $t(x; \mu, \sigma^2, \nu)$, yields,
+\begin{equation} \label{eq:post_pred} 
+    \tilde{p} (y^\ast | x^\ast, \D) 
+	= \int t(y^\ast; x^{\ast \top} \beta, b'/a', 2a') \ d\tilde{\Pi}(\beta)
+\end{equation}
+Using the fact that for $\boldsymbol{X} \sim t(\mu, \sigma^2, \nu)$, $(\boldsymbol{X} - \mu)/ \sigma \sim t_\nu$, we have
+\begin{align}
+    \tilde{p} (y^\ast | x^\ast, \D) 
+	&\ = \E_{\beta \sim \tilde{\Pi}} \left[ t(y^\ast; x^{\ast \top} \beta, b'/a', 2a') \right]
+    \nonumber
+    \\
+    &\ = \E_{\beta \sim \tilde{\Pi}} \left[ Y^\ast= y^\ast | \beta \right]
+    \nonumber
+    \\
+    &\ = \E_{\beta \sim \tilde{\Pi}} \left[ x^{\ast \top} \beta \right] + \sigma t_\nu(y^\ast)
+\end{align}
+
+As \eqref{eq:post_pred} is intractable we instead sample from $p(y^\ast | x^\ast, \D)$, by
+\begin{enumerate}
+    \itemsep0em
+    \item Sampling $\beta \sim \tilde{\Pi}$.
+    \item Sampling $y^\ast$ from $Y^\ast = \mu + \sigma t_\nu$ where $\mu = x^{\ast \top} \beta, \sigma = \sqrt{b'/a'}$ and $\nu = 2a'$, where $t_\nu$ denotes a t-distribution with $\nu$ degrees of freedom.
+\end{enumerate}
+Here we have 
+
