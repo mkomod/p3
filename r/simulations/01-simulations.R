@@ -4,19 +4,19 @@ library(sparseGAM)                      # install.packages("sparseGAM")
 
 source("00-functions.R")
 
-DGP <- read.env("DGP", 1:3)
+DGP <- read.env("DGP", 1:4)
 SIM <- read.env("SIM", 1)
-MET <- read.env("MET", 1)
+MET <- read.env("MET", 1:4)
 CORES <- read.env("CORES", 20)
 
 
 # ----------------------------------------
 # Simulation settings
 # ----------------------------------------
-n <- c(200) [SIM]
-p <- c(1e3) [SIM]
-g <- c(5)   [SIM]
-s <- c(3)   [SIM]
+n <- c(200, 500) [SIM]
+p <- c(1e3, 5e3) [SIM]
+g <- c(5, 10)    [SIM]
+s <- c(3, 5)     [SIM]
 runs <- 100
 
 dg <- list(
@@ -47,7 +47,8 @@ m <- list(
     p=list(
 	list(lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, diag_covariance=TRUE),
 	list(lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, diag_covariance=FALSE),
-	list(lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, mcmc_samples=10e3),
+	list(family="linear", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, 
+	     mcmc_samples=10e3),
 	list(l0=100, l1=1, a0=1, b0=p/g)
     )
 )
