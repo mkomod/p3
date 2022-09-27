@@ -30,57 +30,74 @@ library(mvtnorm)
 }
 
 
-dgp_diag <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1)
+.dgp_return <- function(n, n.test, y, X) 
 {
-    res <- .dgp_base(n, p, gsize, s, b, seed)
+    if (n.test == 0) {
+	return(list(y=y, X=X))
+    } else {
+	N <- n + n.test
+	return(list(y=y[1:n], X=X[1:n, ], 
+		    test=list(y=y[(n+1):N], X=X[(n+1):N, ])))
+    }
+}
+
+
+dgp_diag <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1, n.test=100)
+{
+    N <- ifelse(n.test > 0, n + n.test, n)
+    res <- .dgp_base(N, p, gsize, s, b, seed)
 
     # unpack pars
     corr <- pars[[1]]
 
     if (corr == 0) {
-	X <- matrix(rnorm(n * p), nrow=n)
+	X <- matrix(rnorm(N * p), nrow=N)
     } else {
 	S <- outer(1:p, 1:p, function(i, j) corr^abs(i - j))
-	X <- mvtnorm::rmvnorm(n, rep(0, p), sigma=S)
+	X <- mvtnorm::rmvnorm(N, rep(0, p), sigma=S)
     }
     
     j <- which(res$groups %in% res$active_groups)
-    y <- X[ , j] %*% res$b[j] + rnorm(n, sd=sig)
-
-    return(c(res, list(X=X, y=y, seed=seed, sig=sig, corr=corr)))
+    y <- X[ , j] %*% res$b[j] + rnorm(N, sd=sig)
+    
+    dat <- .dgp_return(n, n.test, y, X)
+    return(c(res, dat, list(seed=seed, sig=sig, corr=corr)))
 }
 
 
-dgp_block <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1)
+dgp_block <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1, n.test=100)
 {
-    res <- .dgp_base(n, p, gsize, s, b, seed)
+    N <- ifelse(n.test > 0, n + n.test, n)
+    res <- .dgp_base(N, p, gsize, s, b, seed)
 
     # unpack pars
     corr <- pars[[1]]
     block_size <- pars[[2]]
 
     if (corr == 0) {
-	X <- matrix(rnorm(n * p), nrow=n)
+	X <- matrix(rnorm(N * p), nrow=N)
     } else {
-	X <- matrix(nrow=n, ncol=0)
+	X <- matrix(nrow=N, ncol=0)
 	for (block in 1:(p / block_size)) {
 	    S <- matrix(corr, nrow=block_size, ncol=block_size)
 	    diag(S) <- 1
-	    X <- cbind(X, mvtnorm::rmvnorm(n, mean=rep(0, block_size), S))
+	    X <- cbind(X, mvtnorm::rmvnorm(N, mean=rep(0, block_size), S))
 	}
     }
 
     j <- which(res$groups %in% res$active_groups)
-    y <- X[ , j] %*% res$b[j] + rnorm(n, sd=sig)
+    y <- X[ , j] %*% res$b[j] + rnorm(N, sd=sig)
 
-    return(c(res, list(X=X, y=y, seed=seed, sig=sig, corr=corr)))
+    dat <- .dgp_return(n, n.test, y, X)
+    return(c(res, dat, list(seed=seed, sig=sig, corr=corr)))
 }
 
 
 dgp_wishart <- function(n, p, gsize, s, pars=list(dof=3, weight=0.9), 
-    b=NULL, seed=1, sig=1)
+    b=NULL, seed=1, sig=1, n.test=100)
 {
-    res <- .dgp_base(n, p, gsize, s, b, seed)
+    N <- ifelse(n.test > 0, n + n.test, n)
+    res <- .dgp_base(N, p, gsize, s, b, seed)
 
     # unpack pars
     dof <- pars[[1]]
@@ -94,12 +111,13 @@ dgp_wishart <- function(n, p, gsize, s, pars=list(dof=3, weight=0.9),
 	G <- (1+(block-1)*gsize):(gsize*block)
 	S[G, G] <- S[G, G] + weight*S_g
     }
-    X <- mvtnorm::rmvnorm(n, rep(0, p), sigma=S)
+    X <- mvtnorm::rmvnorm(N, rep(0, p), sigma=S)
 
     j <- which(res$groups %in% res$active_groups)
-    y <- X[ , j] %*% res$b[j] + rnorm(n, sd=sig)
+    y <- X[ , j] %*% res$b[j] + rnorm(N, sd=sig)
 
-    return(c(res, list(X=X, y=y, seed=seed, sig=sig, dof=dof, weight=weight)))
+    dat <- .dgp_return(n, n.test, y, X)
+    return(c(res, dat, list(seed=seed, sig=sig, dof=dof, weight=weight)))
 }
 
 
@@ -112,8 +130,10 @@ m_run <- function(method, method_par, setting_par, CORES)
     e <- list2env(setting_par)
     e$method_par <- method_par
     e$.dgp_base <- .dgp_base
+    e$.dgp_return <- .dgp_return
     e$method <- method
     e$method_summary <- method_summary
+    e$method_post_pred <- method_post_pred
     
     # init cluster
     cl <- parallel::makeCluster(getOption("cl.cores", CORES), outfile="")
@@ -145,13 +165,21 @@ m_gsvb <- function(d, m_par=list(lambda=0.5, a0=1, b0=100, a_t=1e-3, b_t=1e-3,
 	active_groups <- rep(0, length(unique(d$groups)))
 	active_groups[d$active_groups] <- 1
 	res <- method_summary(d$b, active_groups, fit$beta_hat[-1], fit$g[-1], 0.5)
+	
+	if (!is.null(d$test)) {
+	    coverage <- method_post_pred(d, fit, method="gsvb", 
+		quantiles=c(0.025, 0.975), return_samples=FALSE)
+
+	    return(c(unlist(res), unlist(fit.time[3]), unlist(coverage)))
+	}
 
 	return(c(unlist(res), unlist(fit.time[3])))
 
     }, error=function(e) 
     {
+	print(e)
 	cat("error in run: ", d$seed)
-	return(rep(NA, 213))
+	return(rep(NA, 214))
     })
 }
 
@@ -168,8 +196,17 @@ m_spsl <- function(d, m_par=list(family="linear", lambda=0.5, a0=1, b0=100,
     active_groups <- rep(0, length(unique(d$groups)))
     active_groups[d$active_groups] <- 1
     res <- method_summary(d$b, active_groups, fit$beta_hat[-1], fit$g[-1], 0.5)
+
+    if (!is.null(d$test)) {
+	coverage <- method_post_pred(d, fit, method="spsl", 
+	    quantiles=c(0.025, 0.975), return_samples=FALSE)
+
+	return(c(unlist(res), unlist(fit.time[3]), unlist(coverage)))
+    }
+
     return(c(unlist(res), unlist(fit.time[3])))
 }
+
 
 m_ssgl <- function(d, m_par=list(l0=20, l1=1, a0=1, b0=100)) 
 {
@@ -241,6 +278,29 @@ method_summary <- function(beta_true, active_groups, beta_hat,
 	l1 = sum(abs(beta_true - beta_hat)),
 	l2 = sqrt(sum((beta_true - beta_hat)^2))
     ))
+}
+
+
+method_post_pred <- function(d, fit, method, quantiles=c(0.025, 0.975), 
+	return_samples=FALSE, mcn=1e4) 
+{
+    if (method == "spsl") {
+	pp <- spsl::spsl.predict(fit, d$test$X, quantiles=quantiles,
+	    return_samples=return_samples)
+    } 
+    if (method == "gsvb") {
+	pp <- gsvb::gsvb.predict(fit, d$test$X, mcn=mcn, 
+	    quantiles=quantiles, return_samples=return_samples)
+    }
+    coverage <- mean((pp$quantiles[1, ] <= d$test$y) & (d$y <= pp$quantiles[2, ]))
+
+    return(list(coverage=coverage))
+}
+
+
+method_coverage <- function()
+{
+    stop("not implemented")
 }
 
 

@@ -11,8 +11,10 @@ m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3)
 f <- m_gsvb(d, m_par=m_par)
 
 d <- dgp_block(200, 1000, 5, 3, list(corr=0.6, block_size=50), seed=91)
-m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3)
+m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3, diag_covariance=FALSE)
 f <- m_gsvb(d, m_par=m_par)
+
+
 
 f <- function(x) 
 {
@@ -36,79 +38,142 @@ f(2)
 d <- dgp_wishart(200, 1000, 5, 3, list(dof=3, wieght=0.9))
 d <- dgp_diag(200, 1000, 5, 3, pars=list(corr=0))
 m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3)
+
 f <- m_gsvb(d)
+
 f <- gsvb::gsvb.fit(d$y, d$X, d$groups, intercept=TRUE, a0=1, b0=200, track_elbo=FALSE)
 
 
 # ----------------------------------------
-# Posterior predictive
+# VB posterior predictive
 # ----------------------------------------
-# and posterior predictive coverage in 95% int?
-d$X <- cbind(1, d$X)
-d$groups <- c(1, d$groups+1)
+d <- dgp_diag(200, 1000, 5, 3, pars=list(corr=0))
+f <- gsvb::gsvb.fit(d$y, d$X, d$groups, intercept=TRUE, a0=1, b0=200, track_elbo=TRUE)
 
-y. <- seq(-20, 20, by=0.05)
-x. <- d$X[1, ]
-res <- replicate(10000, {
-    b <- rnorm(length(f$m), f$m, f$s) * (runif(length(f$g)) <= f$g)[d$groups]
-    1 / sqrt(2 * pi) * 
-	exp(lgamma(f$tau_a + 0.5) - lgamma(f$tau_a)) *
-	exp(
-	    f$tau_a * log(f$tau_b) +
-	    (f$tau_a + 0.5) * (log(2) - log( (y. - sum(x. * b))^2 + 2 * f$tau_b))
-	)
-}, simplify="matrix")
+gsvb.predict <- function(fit, groups, newdata, samples=1e4, quantiles=c(0.025, 0.975), return_samples=FALSE) 
+{
+    if (fit$parameters$intercept) {
+	newdata <- cbind(1, newdata)
+	groups <- c(1, groups + 1)
+    }
 
-sig <- sqrt(f$tau_b / f$tau_a)
-ys <- replicate(100, {
-    # b <- rnorm(length(f$m), f$m, f$s) * (runif(length(f$g)) <= f$g)[d$groups]
-    sum(x.* f$beta_hat) + sig * rt(1, 2*f$tau_a)
-}, simplify="matrix")
+    M <- length(fit$g)
+    n <- nrow(newdata)
+    sigma <- sqrt(f$tau_b / f$tau_a)
 
+    y.star <- replicate(samples, 
+    {
+	grp <- (runif(M) <= fit$g)[groups]
+	mu <- rnorm(sum(grp), fit$mu[grp], fit$s[grp])
+	newdata[ , grp] %*% mu + sigma * rt(n, 2 * f$tau_a)
+    }, simplify="matrix")
+
+    y.star <- matrix(y.star, nrow=n)
+
+    res <- list(
+	mean=apply(y.star, 1, mean),
+	quantiles=apply(y.star, 1, quantile, probs=quantiles)
+    )
+
+    if (return_samples) {
+	res <- c(res, list(samples=y.star))
+    }
+
+    return(res)
+}
+
+
+
+pred <- gsvb.predict(f, d$groups, d$X, 1e4, return_samples=F)
+# coverage
+mean(
+    (pred$quantiles[1, ] <= d$y) & (pred$quantiles[2, ] >= d$y)
+)
+
+pred <- gsvb.predict(f, d$groups, matrix(d$X[1, ], nrow=1), 1e3, return_samples=T)
+plot(density(pred$samples))
+abline(v=d$y[1])
+
+# ---------------------------------------- 
+# Posterior predictive SpSL
+# ---------------------------------------- 
+d <- dgp_diag(200, 1000, 5, 3, pars=list(corr=0))
+mf <- spsl::spsl.group_sparse(d$y, d$X, d$groups, intercept=TRUE, mcmc_samples=2e4)
+mf$T <- mf$T[ , -(1:2000)]
+
+spsl.predict <- function(fit, groups, newdata, quantiles=c(0.025, 0.975), return_samples=FALSE) 
+{
+    if (fit$settings$intercept) {
+	groups <- c(1, groups+1)
+	newdata <- cbind(1, newdata)
+    }
+
+    n <- nrow(newdata)
+    tau <- sqrt(fit$T)
+
+    y.star <- sapply(1:ncol(mf$B), function(i) 
+    {
+	grp <- (!!fit$Z[ , i])[groups]
+	mu <- newdata[ , grp] %*% fit$B[grp, i]
+	rnorm(n, mu, sqrt(tau))
+    })
+
+    y.star <- matrix(y.star, nrow=n)
+
+    res <- list(
+	mean=apply(y.star, 1, mean),
+	quantiles=apply(y.star, 1, quantile, probs=quantiles)
+    )
+
+    if (return_samples) {
+	res <- c(res, list(samples=y.star))
+    }
+
+    return(res)
+}
+
+
+pred <- spsl.predict(mf, d$groups, d$X, return_samples=T)
+# coverage
+mean(
+    (pred$quantiles[1, ] <= d$y) & (pred$quantiles[2, ] >= d$y)
+)
+
+pred <- spsl.predict(mf, d$groups, matrix(d$X[1, ], nrow=1), return_samples=T)
+plot(density(pred$samples))
+abline(v=d$y[1])
+
+
+# ----------------------------------------
+# Comparison
+# ----------------------------------------
+gpred <- gsvb.predict(f, d$groups, matrix(d$X[1, ], nrow=1), 1e5, return_samples=T)
+spred <- spsl.predict(mf, d$groups, matrix(d$X[1, ], nrow=1), return_samples=T)
+
+pdf("~/p1/notes/gsvb/figures/post_pred.pdf", width=6, height=4)
+    par(mar=c(2,4,1,0))
+    plot(density(gpred$samples[1, ]), lwd=2, col=2, main="")
+    lines(density(spred$samples[1, ]), lwd=2, col=3, lty=2)
+    grid()
+    legend("topright", legend=c("Variational PP", "PP"), lwd=2, col=c(2,3), lty=c(1,2))
+dev.off()
+
+
+gpred <- gsvb.predict(f,  d$groups,  d$X, 1e3, return_samples=T)
+spred <- spsl.predict(mf, d$groups, d$X, return_samples=T)
+mean(
+    (gpred$quantiles[1, ] <= d$y) & (gpred$quantiles[2, ] >= d$y)
+)
+mean(
+    (spred$quantiles[1, ] <= d$y) & (spred$quantiles[2, ] >= d$y)
+)
+
+
+
+# ----------------------------------------
+# Posterior predictive Bayes
+# ----------------------------------------
 ys <- sum(x.* f$beta_hat) + sig * rt(10000, 2*f$tau_a)
-
-plot(density(ys))
-lines(y., probs , type="l", lwd=4)
-lines(density(ystrue) , type="l", lwd=4)
-abline(v=d$y[1])
-
-
-
-probs <- apply(res, 1, mean)
-plot(y., probs , type="l", lwd=4)
-abline(v=d$y[1])
-matplot(y., res, type="l")
-
-
-
-
-
-cvrg <- apply(res, 1, quantile, probs=c(0.025, 0.975))
-
-quants <- apply(res, 1, quantile, probs=c(0.005, 0.995))
-plot(d$y, d$X %*% f$beta_hat)
-
-
-
-mean((quants[1, ] <= d$y) & (d$y <= quants[2, ]))
-mean((cvrg[1, ] <= c(0, d$b)) & (c(0, d$b) <= cvrg[2, ]))
-
-
-mf <- spsl::spsl.group_sparse(d$y, d$X, d$groups)
-mf$T <- mf$T[, -(1:500)]
-
-
-ystrue <- sapply(1:4500, function(i) {
-    b <- mf$B[ , i] * mf$Z[ , i][d$groups]
-    tau <- mf$T[i]
-    rnorm(1, sum(x. * b), sqrt(tau))
-})
-
-plot(density(ys), xlim=c(-10, 10))
-lines(density(ystrue), xlim=c(-10, 10))
-plot(density(ystrue))
-lines(density(ys))
-abline(v=d$y[1])
 
 
 
@@ -119,4 +184,30 @@ abline(v=d$y[1])
 
 
 
+# ----------------------------------------
+# Testing dgp with test data
+# ----------------------------------------
+source("00-functions.R")
+n <- 200
+p <- 1000 
+g <- 5
+s <- 3
+
+d <- dgp_block(200, 1000, 5, 3, list(corr=0.6, block_size=50), seed=91)
+d$test
+
+# ----------------------------------------
+# testing method_post_pred
+# ----------------------------------------
+d <- dgp_block(200, 1000, 5, 3, list(corr=0.6, block_size=50), seed=91)
+
+m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3, diag_covariance=TRUE)
+f <- m_gsvb(d, m_par=m_par)
+
+m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3, diag_covariance=FALSE)
+f <- m_gsvb(d, m_par=m_par)
+
+
+f <- gsvb::gsvb.fit(d$y, d$X, d$groups, diag_covariance=F)
+(coverage <- method_post_pred(d, f, "gsvb"))
 
