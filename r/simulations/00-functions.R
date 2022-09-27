@@ -340,55 +340,6 @@ read.env <- function(evar, default)
 
 
 # # compute the credible intervals
-# svb.credible_interval <- function(fit, a=0.05, conditional=FALSE)
-# {
-#     credible.interval <- sapply(1:length(fit$g), function(i) {
-# 	g <- fit$g[i]
-# 	m <- fit$m[i]
-# 	s <- fit$s[i]
-	
-# 	if (conditional) {
-# 	    return(qnorm(c(a/2, 1-a/2), m, s))
-# 	}
-
-# 	if (!conditional) {
-# 	    if (g > 1 - a) {
-# 		# compute the interval that contains 1 - a.g of the mass
-# 		# i.e. if g = 0.97 then the interval needs to be wider to
-# 		# contain 95% of the total mass
-# 		a.g <- 1 - (1-a)/g
-# 		interval <- qnorm(c(a.g/2, 1-a.g/2), m, s)
-# 		contains.dirac <- FALSE
-		
-# 		if (interval[1] <= 0 && interval[2] >= 0) {
-# 		    # if interval contains Dirac mass it needs to be smaller
-# 		    interval <- qnorm(c(a.g/2 + (1-g)/2, 1 - a.g/2 - (1-g)/2), m, s)
-# 		    contins.dirac <- TRUE
-# 		}
-
-# 		return(c(lower=interval[1], upper=interval[2], 
-# 			 contains.dirac=contains.dirac))
-# 	    } else if (g < a) {
-# 		# if the spike contains (1-a)% of the mass then we take 
-# 		# the Dirac mass at 0
-# 		return(c(lower=0, upper=0, contains.dirac=T))
-# 	    } else {
-# 		# will always contain the Dirac
-# 		# so we remove the density accounted for by the
-# 		# Dirac mass from the interval
-# 		interval <- qnorm(c(a/2 + (1-g)/2, 1-a/2 -(1-g)/2), m, s)
-
-# 		return(c(lower=interval[1], upper=interval[2], 
-# 			contains.dirac=TRUE))
-# 	    }
-# 	}
-#     })
-
-#     return(t(credible.interval))
-# }
-
-
-# # compute the credible intervals
 # mcmc.credible_interval <- function(fit, a=0.05, conditional=FALSE, burnin=1e3)
 # {
 #     p <- ncol(fit$b)
