@@ -133,6 +133,7 @@ m_run <- function(method, method_par, setting_par, CORES)
     e$.dgp_return <- .dgp_return
     e$method <- method
     e$method_summary <- method_summary
+    e$method_coverage <- method_coverage
     e$method_post_pred <- method_post_pred
     
     # init cluster
