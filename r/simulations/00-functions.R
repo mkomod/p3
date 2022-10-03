@@ -166,20 +166,24 @@ m_gsvb <- function(d, m_par=list(lambda=0.5, a0=1, b0=100, a_t=1e-3, b_t=1e-3,
 	active_groups[d$active_groups] <- 1
 	res <- method_summary(d$b, active_groups, fit$beta_hat[-1], fit$g[-1], 0.5)
 	
+	coverage.beta <- method_coverage(d, fit, "gsvb", prob = 0.95)
+
 	if (!is.null(d$test)) {
-	    coverage <- method_post_pred(d, fit, method="gsvb", 
+	    coverage.pp <- method_post_pred(d, fit, method="gsvb", 
 		quantiles=c(0.025, 0.975), return_samples=FALSE)
 
-	    return(c(unlist(res), unlist(fit.time[3]), unlist(coverage)))
+	    return(c(unlist(res), unlist(fit.time[3]), unlist(coverage.beta),
+		     unlist(coverage.pp)))
 	}
 
-	return(c(unlist(res), unlist(fit.time[3])))
+	return(c(unlist(res), unlist(fit.time[3]), unlist(coverage.beta)))
 
     }, error=function(e) 
     {
-	print(e)
 	cat("error in run: ", d$seed)
-	return(rep(NA, 214))
+
+	if (!is.null(d$test)) return(rep(NA, 218))
+	return(rep(NA, 217))
     })
 }
 
@@ -188,7 +192,7 @@ m_spsl <- function(d, m_par=list(family="linear", lambda=0.5, a0=1, b0=100,
     a_t=1e-3, b_t=1e-3, mcmc_samples=10e3))
 {
     fit.time <- system.time({
-	fit <- spsl::spsl.group_sparse(d$y, d$X, d$groups, family=m_par$family,
+	fit <- spsl::spsl.fit(d$y, d$X, d$groups, family=m_par$family,
 	    lambda=m_par$lambda, a_0=m_par$a0, b_0=m_par$b0, a_t=m_par$a_t,
 	    b_t=m_par$b_t, mcmc_sample=m_par$mcmc_samples)
     })
@@ -197,14 +201,17 @@ m_spsl <- function(d, m_par=list(family="linear", lambda=0.5, a0=1, b0=100,
     active_groups[d$active_groups] <- 1
     res <- method_summary(d$b, active_groups, fit$beta_hat[-1], fit$g[-1], 0.5)
 
+    coverage.beta <- method_coverage(d, fit, "spsl", prob = 0.95)
+
     if (!is.null(d$test)) {
-	coverage <- method_post_pred(d, fit, method="spsl", 
+	coverage.pp <- method_post_pred(d, fit, method="spsl", 
 	    quantiles=c(0.025, 0.975), return_samples=FALSE)
 
-	return(c(unlist(res), unlist(fit.time[3]), unlist(coverage)))
+	return(c(unlist(res), unlist(fit.time[3]), unlist(coverage.beta),
+		 unlist(coverage.pp)))
     }
 
-    return(c(unlist(res), unlist(fit.time[3])))
+    return(c(unlist(res), unlist(fit.time[3]), unlist(coverage.beta)))
 }
 
 
@@ -298,35 +305,30 @@ method_post_pred <- function(d, fit, method, quantiles=c(0.025, 0.975),
 }
 
 
-method_coverage <- function()
+method_coverage <- function(d, fit, method, prob=0.95)
 {
-    stop("not implemented")
+    if (method == "spsl") {
+	ci <- spsl::spsl.credible_intervals(fit, prob=prob)
+    }
+    if (method == "gsvb") {
+	ci <- gsvb::gsvb.credible_intervals(fit, prob=prob)
+    }
+
+    l <- ci[ , 1]
+    u <- ci[ , 2]
+    dirac <- ci[ , 3]
+    
+    b <- if (fit$parameters$intercept) c(0, d$b) else d$b
+    coverage <- (((l <= b) & (b <= u)) | ((b == 0) & (dirac == T)))
+    bs <- b != 0
+
+    return(list(
+	coverage.non_zero = mean(coverage[bs]),
+	length.non_zero = mean(u[bs] - l[bs]),
+	coverage.zero = mean(coverage[!bs]),
+	length.zero =  mean(u[!bs] - l[!bs])
+    ))
 }
-
-
-# Compute the coverage
-# method_coverage <- function(fit, d, a=0.05, threshold=0.5, conditional=FALSE, 
-# 	mcmc=FALSE)
-# {
-#     if (mcmc) {
-# 	ci <- mcmc.credible_interval(fit, a, conditional=conditional)
-#     } else {
-# 	ci <- svb.credible_interval(fit, a, conditional=conditional)
-#     }
-#     l <- ci[ , 1]
-#     u <- ci[ , 2]
-#     dirac <- ci[ , 3]
-
-#     coverage <- (((l <= d$beta) & (d$beta <= u)) | ((d$beta == 0) & (dirac == T)))
-#     bs <- d$beta != 0
-
-#     return(list(
-# 	coverage.n0 = mean(coverage[bs]),
-# 	length.n0 = mean(u[bs] - l[bs]),
-# 	coverage.0 = mean(coverage[!bs]),
-# 	length.0 =  mean(u[!bs] - l[!bs])
-#     ))
-# }
 
 
 # ----------------------------------------
@@ -338,61 +340,3 @@ read.env <- function(evar, default)
     if(Sys.getenv(evar) != "") as(Sys.getenv(evar), class(default)) else default
 }
 
-
-# # compute the credible intervals
-# mcmc.credible_interval <- function(fit, a=0.05, conditional=FALSE, burnin=1e3)
-# {
-#     p <- ncol(fit$b)
-
-#     credible.interval <- sapply(1:length(fit$g), function(i) {
-# 	g <- fit$g[i]	
-
-# 	if (conditional) {
-# 	    m <- fit$b[i, burnin:p]
-# 	    z <- !!fit$z[i, burnin:p]
-# 	    m <- m[z]
-# 	    f <- density(m)
-# 	    cdf <- ecdf(m)
-# 	    return(quantile(cdf, c(a/2, 1 - a/2)))
-# 	}
-
-# 	if (!conditional) {
-# 	    if (g > 1 - a) {
-# 		# Slab contains 1 - a of mass
-# 		a.g <- 1 - (1-a)/g
-# 		m <- fit$b[i, burnin:p]
-# 		z <- !!fit$z[i, burnin:p]
-# 		m <- m[z]
-# 		f <- density(m)
-# 		cdf <- ecdf(m)
-# 		interval <- quantile(cdf, c(a.g/2, 1 - a.g/2))
-# 		contains.dirac <- FALSE
-		
-# 		if (interval[1] <= 0 && interval[2] >= 0) {
-# 		    # if interval contains Dirac mass it needs to be smaller
-# 		    interval <- quantile(cdf, c(a.g/2+(1-g)/2, 1-a.g/2-(1-g)/2))
-# 		    contins.dirac <- TRUE
-# 		}
-
-# 		return(c(lower=interval[1], upper=interval[2], 
-# 			 contains.dirac=contains.dirac))
-# 	    } else if (g < a) {
-# 		# Dirac contains 1 - a of mass
-# 		return(c(lower=0, upper=0, contains.dirac=T))
-# 	    } else {
-# 		# will always contain the Dirac
-# 		m <- fit$b[i, burnin:p]
-# 		z <- !!fit$z[i, burnin:p]
-# 		m <- m[z]
-# 		f <- density(m)
-# 		cdf <- ecdf(m)
-# 		interval <- quantile(cdf, c(a/2 +(1-g)/2, 1 - a/2 - (1-g)/2))
-
-# 		return(c(lower=interval[1], upper=interval[2], 
-# 			 contains.dirac=TRUE))
-# 	    }
-# 	}
-#     })
-
-#     return(t(credible.interval))
-# }
