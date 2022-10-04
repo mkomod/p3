@@ -1,7 +1,7 @@
 # Misc code for debugging
 source("./00-functions.R")
 
-d <- dgp_diag(200, 1000, 5, 10, list(corr=0))
+d <- dgp_diag(250, 5000, 10, 10, list(corr=0))
 m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3)
 f <- m_gsvb(d)
 f <- gsvb::gsvb.fit(d$y, d$X, d$groups, intercept=TRUE, a0=1, b0=200, track_elbo=FALSE)
@@ -13,6 +13,17 @@ f <- m_gsvb(d, m_par=m_par)
 d <- dgp_block(200, 1000, 5, 3, list(corr=0.6, block_size=50), seed=91)
 m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3, diag_covariance=FALSE)
 f <- m_gsvb(d, m_par=m_par)
+
+pp <- gsvb::gsvb.predict(f, d$test$X, mcn)
+
+mcn=1e4
+quantiles=c(0.025, 0.975)
+return_samples=F
+pp <- gsvb::gsvb.predict(f, d$test$X, mcn=mcn, 
+    quantiles=quantiles, return_samples=return_samples)
+coverage <- mean((pp$quantiles[1, ] <= d$test$y) & (d$test$y <= pp$quantiles[2, ]))
+
+pp$quantiles[1, ] <= d$test$y & d$test$y <= pp$quantiles[2, ]
 
 
 
@@ -169,21 +180,6 @@ mean(
 )
 
 
-
-# ----------------------------------------
-# Posterior predictive Bayes
-# ----------------------------------------
-ys <- sum(x.* f$beta_hat) + sig * rt(10000, 2*f$tau_a)
-
-
-
-# ----------------------------------------
-# Coverage?
-# ----------------------------------------
-
-
-
-
 # ----------------------------------------
 # Testing dgp with test data
 # ----------------------------------------
@@ -196,6 +192,7 @@ s <- 3
 d <- dgp_block(200, 1000, 5, 3, list(corr=0.6, block_size=50), seed=91)
 d$test
 
+
 # ----------------------------------------
 # testing method_post_pred
 # ----------------------------------------
@@ -207,7 +204,24 @@ f <- m_gsvb(d, m_par=m_par)
 m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3, diag_covariance=FALSE)
 f <- m_gsvb(d, m_par=m_par)
 
-
 f <- gsvb::gsvb.fit(d$y, d$X, d$groups, diag_covariance=F)
 (coverage <- method_post_pred(d, f, "gsvb"))
+
+
+# ----------------------------------------
+# testing method coverage
+# ----------------------------------------
+d <- dgp_block(200, 1000, 5, 3, list(corr=0.6, block_size=50), seed=91)
+
+m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3, diag_covariance=TRUE)
+f <- m_gsvb(d, m_par=m_par)
+
+m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3, diag_covariance=FALSE)
+f <- m_gsvb(d, m_par=m_par)
+
+f <- gsvb::gsvb.fit(d$y, d$X, d$groups, diag_covariance=F)
+method_coverage(d, f, "gsvb")
+
+s <- spsl::spsl.fit(d$y, d$X, d$groups)
+method_coverage(d, s, "spsl")
 
