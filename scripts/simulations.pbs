@@ -7,8 +7,8 @@ source activate Renv
 PROJ_DIR=$HOME/p3
 
 export CORES=100
-export DGP=1
-export SIM=1
+# export DGP=1
+# export SIM=1
 
 cd $PROJ_DIR/r/simulations
 Rscript 01-simulations.R > \
