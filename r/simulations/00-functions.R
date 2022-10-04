@@ -300,7 +300,7 @@ method_post_pred <- function(d, fit, method, quantiles=c(0.025, 0.975),
 	pp <- gsvb::gsvb.predict(fit, d$test$X, mcn=mcn, 
 	    quantiles=quantiles, return_samples=return_samples)
     }
-    coverage <- mean((pp$quantiles[1, ] <= d$test$y) & (d$y <= pp$quantiles[2, ]))
+    coverage <- mean((pp$quantiles[1, ] <= d$test$y) & (d$test$y <= pp$quantiles[2, ]))
 
     return(list(coverage=coverage))
 }
