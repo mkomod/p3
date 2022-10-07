@@ -1,6 +1,10 @@
 set.seed(1)
 n <- 350
 p <- 500
+
+n <- 200
+p <- 25
+
 gsize <- 5
 groups <- c(rep(1:(p/gsize), each=gsize))
 
@@ -27,7 +31,7 @@ w <- a0 / (a0 + b0)
     if (is.null(fit)) {
 	m <- rnorm(p)
 	s <- runif(p, 0.1, 0.2)
-	g <- rep(1, p)
+	g <- rep(0.5, p)
 	g <- 0 + !!b
     } else {
 	m <- f$m
