@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------------
 set.seed(1)
 n <- 350
-f <- 500
+p <- 500
 gsize <- 5
 groups <- c(rep(1:(p/gsize), each=gsize))
 
@@ -23,9 +23,6 @@ f <- gsvb.logistic(y, X, groups, niter=50, fit=f)
 
 plot(f$m * f$g)
 plot(f$g)
-
-ff <- sparseGAM::SSGL(y, X, X, groups, family="binomial", lambda0=2, lambda1=1)
-plot(ff$beta)
 
 gsvb.logistic <- function(y, X, groups, niter=500, fit=NULL)
 {
@@ -70,7 +67,7 @@ gsvb.logistic <- function(y, X, groups, niter=500, fit=NULL)
 		control=list(maxit=20),
 		method="L-BFGS-B", lower=1e-3, upper=s[G][1] + 0.2)$par
 
-	    g[G] <- opt_g(y, X, m, s, g, G, lambda, S)
+	    g[G] <- opt_g(y, X, m, s, g, G, lambda, w, S)
 
 	    # add G to S
 	    S <- S * compute_S_G(X, m, s, g, G)
@@ -145,7 +142,7 @@ opt_s <- function(s_G, y, X, m, s, g, G, lambda, S)
 }
 
 
-opt_g <- function(y, X, m, s, g, G, lambda, S) 
+opt_g <- function(y, X, m, s, g, G, lambda, w, S) 
 {
     mk <- length(G)
     Ck <- mk * log(2) + (mk -1)/2 * log(pi) + lgamma( (mk + 1) / 2)
