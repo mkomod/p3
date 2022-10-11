@@ -37,6 +37,7 @@ gsvb.logistic <- function(y, X, groups, niter=500, fit=NULL)
 	m <- rnorm(p)
 	s <- runif(p, 0.1, 0.2)
 	g <- rep(0.05, p)
+	g <- +!!b
 	l <- rgamma(n, 1, 1)
     } else {
 	m <- f$m
@@ -110,17 +111,17 @@ opt_s <- function(s_G, XAX, m, G, lambda)
     lambda * (sum(s_G^2 + m[G]^2))^(1/2)
 }
 
-opt_g <- function(y, X, XAX, m, s, g, G, Gc, lambda) 
+opt_g <- function(y, X, XAX, m, s, g, G, Gc, lambda, w) 
 {
     mk <- length(G)
     Ck <- mk * log(2) + (mk -1)/2 * log(pi) + lgamma( (mk + 1) / 2)
 
     res <- 
-	log(w / (1- w)) + 
-	0.5 * mk + 
-	0.5 * sum(log(2 * pi * s[G]^2)) -
+	log(w / (1 - w)) + 
+	0.5 * mk -
 	Ck +
-	mk * log(lambda) -
+	mk * log(lambda) +
+	0.5 * sum(log(2 * pi * s[G]^2)) -
 	lambda * sqrt(sum(s[G]^2) + sum(m[G]^2)) +
 	sum((y - 0.5) * X[ , G] %*% m[G]) -
 	0.5 * t(m[G]) %*% XAX[G, G] %*% m[G] -

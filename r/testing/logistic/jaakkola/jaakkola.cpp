@@ -116,6 +116,7 @@ vec jaak_update_s(const vec &y, const mat &XAX, const vec &mu,
 }
 
 
+// [[Rcpp::export]]
 double jaak_update_g(const vec &y, const mat &X, const mat &XAX,
 	const vec &mu, const vec &s, const vec &g, const double lambda,
 	const double w, const uvec &G, const uvec &Gc)
@@ -131,43 +132,29 @@ double jaak_update_g(const vec &y, const mat &X, const mat &XAX,
 	mk * log(lambda) +
 	0.5 * accu(log(2.0 * M_PI * s(G) % s(G))) -
 	lambda * sqrt(dot(s(G), s(G)) + dot(mu(G), mu(G))) +
-	0;
-	// CONTINUE HERE 
-	// ...
+	dot((y - 0.5), X.cols(G) * mu(G)) -
+	0.5 * dot(mu(G), XAX(G, G) * mu(G)) -
+	0.5 * accu(diagvec(XAX(G, G)) % s(G) % s(G)) -
+	dot(mu(G), XAX(G, Gc) * (g(Gc) % mu(Gc)));
 
-    return 1.0/(1.0 + exp(-res));
+    return 1.0 / (1.0 + exp(-res));
 }
 
 
-// opt_g <- function(y, X, XAX, m, s, g, G, Gc, lambda) 
-// {
-//     mk <- length(G)
-//     Ck <- mk * log(2) + (mk -1)/2 * log(pi) + lgamma( (mk + 1) / 2)
+// [[Rcpp::export]]
+vec jaak_update_l(const mat &X, const vec &mu, const vec &s, const vec &g) 
+{
+    return sqrt(pow(X * (g % mu), 2) + (X % X) * (g % s % s));
+}
 
-//     res <- 
-// 	log(w / (1- w)) + 
-// 	0.5 * mk + 
-// 	0.5 * sum(log(2 * pi * s[G]^2)) -
-// 	Ck +
-// 	mk * log(lambda) -
-// 	lambda * sqrt(sum(s[G]^2) + sum(m[G]^2)) +
-// 	sum((y - 0.5) * X[ , G] %*% m[G]) -
-// 	0.5 * t(m[G]) %*% XAX[G, G] %*% m[G] -
-// 	0.5 * sum(diag(XAX[G, G]) * s[G]^2) -
-// 	t(m[G]) %*% XAX[G, Gc] %*% (g[Gc] * m[Gc])
+vec sigmoid(const vec &x) {
+    return 1/(1 + exp(-x));
+}
 
-//     return(sigmoid(res))
-// }
-
-// opt_l <- function(X, m, s, g) 
-// {
-//     sqrt((X %*% (g * m))^2 + apply(X, 1, function(x) x^2 %*% (g * s^2)))
-// }
-
-// a <- function(x) (sigmoid(x) - 0.5) / x
-
-// sigmoid <- function(x) 1/(1 + exp(-x))
-
-
+// [[Rcpp::export]]
+vec a(const vec &x)
+{
+    return (sigmoid(x) - 0.5) / x;
+}
 
 
