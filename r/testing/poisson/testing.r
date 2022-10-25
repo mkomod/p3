@@ -1,3 +1,6 @@
+library(Rcpp)
+Rcpp::sourceCpp("./poisson.cpp")
+
 # ----------------------------------------
 # Test data
 # ----------------------------------------
@@ -14,7 +17,7 @@ y <- rpois(n, exp(xb))
 
 # glm(y ~ X[ , !!b], family=poisson)
 
-f <- gsvb.pois(y, X, groups, niter=20)
+f <- gsvb.pois(y, X, groups, niter=50)
 plot(f$m * f$g)
 plot(f$g)
 plot(f$s)
@@ -30,13 +33,13 @@ gsvb.pois <- function(y, X, groups, niter=500, fit=NULL, lambda=1)
     ugroups <- unique(groups)
 
     # initialize
-    m <- rnorm(p, 0, 0.5)
+    m <- rnorm(p, 0, 0.4)
     s <- runif(p, 0.1, 0.2)
     # g <- +!!b
     g <- rep(0.1, p)
     w <- 1/(1+length(ugroups))
 
-    P <- compute_P(X, m, s, g, ugroups)
+    P <- compute_P(X, m, s, g, groups)
 
     # main loop
     for (iter in 1:niter)
@@ -44,25 +47,16 @@ gsvb.pois <- function(y, X, groups, niter=500, fit=NULL, lambda=1)
 	for (gi in seq_along(ugroups))
 	{
 	    G <- which(groups == ugroups[gi])
-	    mk <- length(G)
 
-	    P <- P / compute_P_G(X, m, s, g, G)
+	    P <- P / compute_P_G(X, m, s, g, G-1)
 
-	    m[G] <- optim(m[G], 
-		fn=function(m_G) opt_mu(m_G, y, X, s, G, lambda, P),
-		control=list(maxit=20),
-		method="BFGS")$par
+	    m[G] <- pois_update_mu(y, X, m, s, lambda, G-1, P)
+	    s[G] <- pois_update_s(y, X, m, s, lambda, G-1, P)
+	    g[G] <- pois_update_g(y, X, m, s, lambda, w, G-1, P)
 	    
-	    s[G] <- optim(s[G],
-		fn=function(s_G) opt_s(s_G, X, m, G, lambda, P),
-		control=list(maxit=20),
-		method="L-BFGS-B", lower=s[G], upper=s[G]+0.2)$par
-
-	    g[G] <- opt_g(y, X, m, s, g, G, lambda, w, P)
-	    
-	    P <- P * compute_P_G(X, m, s, g, G)
+	    P <- P * compute_P_G(X, m, s, g, G-1)
 	}
-	cat("\niter: ", iter)
+	cat(iter)
 	plot(g)
     }
 
@@ -73,6 +67,18 @@ gsvb.pois <- function(y, X, groups, niter=500, fit=NULL, lambda=1)
 # ----------------------------------------
 # Update mu
 # ----------------------------------------
+ugroups <- unique(groups)
+
+# initialize
+m <- rnorm(p, 0, 0.5)
+s <- runif(p, 0.1, 0.2)
+g <- rep(0.1, p)
+w <- 1/(1+length(ugroups))
+G <- which(groups == 1)
+lambda <- 1
+
+P <- compute_P(X, m, s, g, ugroups)
+
 opt_mu <- function(m_G, y, X, s, G, lambda, P) 
 {
     PP <- sum(P * mvmgf(X[ , G], m_G, s[G]))
@@ -84,9 +90,17 @@ opt_mu <- function(m_G, y, X, s, G, lambda, P)
     return(res)
 }
 
+optim(m[G], 
+    fn=function(m_G) opt_mu(m_G, y, X, s, G, lambda, P),
+    control=list(maxit=20),
+    method="BFGS")$par
+
+
+pois_update_mu(y, X, m, s, lambda, G-1, P)
+
 
 # ----------------------------------------
-# ypdate S
+# update S
 # ----------------------------------------
 opt_s <- function(s_G, X, m, G, lambda, P)
 {
@@ -99,6 +113,12 @@ opt_s <- function(s_G, X, m, G, lambda, P)
     return(res)
 }
 
+optim(s[G],
+    fn=function(s_G) opt_s(s_G, X, m, G, lambda, P),
+    control=list(maxit=20),
+    method="L-BFGS-B", lower=s[G], upper=s[G]+0.2)$par
+
+pois_update_s(y, X, m, s, lambda, G-1, P)
 
 # ----------------------------------------
 # update g
@@ -122,23 +142,26 @@ opt_g <- function(y, X, m, s, g, G, lambda, w, P)
     sigmoid(res)
 }
 
+G <- which(groups == 3)
+opt_g(y, X, m, s, g, G, lambda, w, P)
+pois_update_g(y, X, m, s, lambda, w, G-1, P)
+
 
 # ---------------------------------------
 # misc funcs
 # ---------------------------------------
-compute_P <- function(X, m, s, g, ugroups) 
+compute_P_ <- function(X, m, s, g, ugroups) 
 {
     P <- rep(1, nrow(X))
 
     for (group in ugroups) {
 	G <- which(groups == group)
-	P <- P * compute_P_G(X, m, s, g, G)
+	P <- P * compute_P_G_(X, m, s, g, G)
     }
     return(P)
 }
 
-
-compute_P_G <- function(X, m, s, g, G)
+compute_P_G_ <- function(X, m, s, g, G)
 {
     (1-g[G[1]]) + g[G[1]] * mvmgf(X[, G], m[G], s[G])
 }
@@ -149,4 +172,13 @@ mvmgf <- function(X, mu, s)
     exp(X %*% mu + 0.5 * diag(X %*% diag(s^2) %*% t(X)))
 }
 
+
+compute_P_(X, m, s, g, ugroups)
+compute_P(X, m, s, g, groups)
+
+
 sigmoid <- function(x) 1/(1+exp(-x))
+
+ff <- glmnet::glmnet(X, y, family="poisson", nlambda=10, standardize=F, intercept=F)
+ff$beta[ , ff$
+
