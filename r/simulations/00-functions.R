@@ -22,7 +22,7 @@ library(mvtnorm)
 	for (a in active_groups) {
 	    gk <- which(groups == a)
 	    m <- length(gk)
-	    b[gk] <- sample(c(1, -1), m, replace=T) * runif(m, min=1, max=3)
+	    b[gk] <- sample(c(1, -1), m, replace=T) * runif(m, min=0, max=1)
 	}
     }
     
@@ -30,8 +30,19 @@ library(mvtnorm)
 }
 
 
-.dgp_return <- function(n, n.test, y, X) 
+.dgp_return <- function(model, X, Xb, n, n.test, sig=1)
 {
+    if (model == "gaussian") {	# LINEAR REG
+	y <- Xb + rnorm(n + n.test, 0, sd=sig)
+    }
+    if (model == "binomial") {      # LOGISTIC REG
+	probs <- 1/(1+exp(-Xb))
+	y <- rbinom(n + n.test, 1, probs)
+    }
+    if (model == "poisson") {	# POISSON REG
+	y <- rpois(n + n.test, lambda=exp(Xb))
+    }
+
     if (n.test == 0) {
 	return(list(y=y, X=X))
     } else {
@@ -48,7 +59,8 @@ dgp_diag <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1, n.test=100)
     res <- .dgp_base(N, p, gsize, s, b, seed)
 
     # unpack pars
-    corr <- pars[[1]]
+    model <- pars[[1]]
+    corr <- pars[[2]]
 
     if (corr == 0) {
 	X <- matrix(rnorm(N * p), nrow=N)
@@ -58,9 +70,9 @@ dgp_diag <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1, n.test=100)
     }
     
     j <- which(res$groups %in% res$active_groups)
-    y <- X[ , j] %*% res$b[j] + rnorm(N, sd=sig)
+    Xb <- X[ , j] %*% res$b[j]
     
-    dat <- .dgp_return(n, n.test, y, X)
+    dat <- .dgp_return(model, X, Xb, n, n.test, sig)
     return(c(res, dat, list(seed=seed, sig=sig, corr=corr)))
 }
 
@@ -71,8 +83,9 @@ dgp_block <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1, n.test=100)
     res <- .dgp_base(N, p, gsize, s, b, seed)
 
     # unpack pars
-    corr <- pars[[1]]
-    block_size <- pars[[2]]
+    model <- pars[[1]]
+    corr <- pars[[2]]
+    block_size <- pars[[3]]
 
     if (corr == 0) {
 	X <- matrix(rnorm(N * p), nrow=N)
@@ -86,9 +99,9 @@ dgp_block <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1, n.test=100)
     }
 
     j <- which(res$groups %in% res$active_groups)
-    y <- X[ , j] %*% res$b[j] + rnorm(N, sd=sig)
+    Xb <- X[ , j] %*% res$b[j]
 
-    dat <- .dgp_return(n, n.test, y, X)
+    dat <- .dgp_return(model, X, Xb, n, n.test, sig)
     return(c(res, dat, list(seed=seed, sig=sig, corr=corr)))
 }
 
@@ -100,8 +113,9 @@ dgp_wishart <- function(n, p, gsize, s, pars=list(dof=3, weight=0.9),
     res <- .dgp_base(N, p, gsize, s, b, seed)
 
     # unpack pars
-    dof <- pars[[1]]
-    weight <- pars[[2]]
+    model <- pars[[1]]
+    dof <- pars[[2]]
+    weight <- pars[[3]]
 
     S <- (1-weight)*solve(rWishart(1, p+dof, diag(rep(1, p)))[, , 1])
     for (block in 1:(p / gsize)) {
@@ -114,9 +128,9 @@ dgp_wishart <- function(n, p, gsize, s, pars=list(dof=3, weight=0.9),
     X <- mvtnorm::rmvnorm(N, rep(0, p), sigma=S)
 
     j <- which(res$groups %in% res$active_groups)
-    y <- X[ , j] %*% res$b[j] + rnorm(N, sd=sig)
+    Xb <- X[ , j] %*% res$b[j]
 
-    dat <- .dgp_return(n, n.test, y, X)
+    dat <- .dgp_return(model, X, Xb, n, n.test, sig)
     return(c(res, dat, list(seed=seed, sig=sig, dof=dof, weight=weight)))
 }
 
@@ -152,12 +166,13 @@ m_run <- function(method, method_par, setting_par, CORES)
 }
 
 
-m_gsvb <- function(d, m_par=list(lambda=0.5, a0=1, b0=100, a_t=1e-3, b_t=1e-3,
-	diag_covariance=TRUE))
+m_gsvb <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100, 
+	a_t=1e-3, b_t=1e-3, diag_covariance=TRUE))
 {
     tryCatch({
 	fit.time <- system.time({
-	    fit <- gsvb::gsvb.fit(d$y, d$X, d$groups, intercept=TRUE, 
+	    fit <- gsvb::gsvb.fit(d$y, d$X, d$groups, 
+		family=m_par$family, intercept=TRUE, 
 		diag_covariance=m_par$diag_covariance, lambda=m_par$lambda,
 		a0=m_par$a0, b0=m_par$b0, tau_a0=m_par$a_t, tau_b0=m_par$b_t,
 		niter=500, track_elbo=FALSE)
@@ -182,6 +197,7 @@ m_gsvb <- function(d, m_par=list(lambda=0.5, a0=1, b0=100, a_t=1e-3, b_t=1e-3,
     }, error=function(e) 
     {
 	cat("error in run: ", d$seed)
+	print(e)
 
 	if (!is.null(d$test)) return(rep(NA, 218))
 	return(rep(NA, 217))
@@ -189,7 +205,7 @@ m_gsvb <- function(d, m_par=list(lambda=0.5, a0=1, b0=100, a_t=1e-3, b_t=1e-3,
 }
 
 
-m_spsl <- function(d, m_par=list(family="linear", lambda=0.5, a0=1, b0=100, 
+m_spsl <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100, 
     a_t=1e-3, b_t=1e-3, mcmc_samples=10e3))
 {
     fit.time <- system.time({
@@ -216,10 +232,10 @@ m_spsl <- function(d, m_par=list(family="linear", lambda=0.5, a0=1, b0=100,
 }
 
 
-m_ssgl <- function(d, m_par=list(l0=20, l1=1, a0=1, b0=100)) 
+m_ssgl <- function(d, m_par=list(family="gaussian", l0=20, l1=1, a0=1, b0=100)) 
 {
     fit.time <- system.time({
-	fit <- sparseGAM::SSGL(d$y, d$X, d$X, d$groups, family="gaussian",
+	fit <- sparseGAM::SSGL(d$y, d$X, d$X, d$groups, family=m_par$family,
 	    lambda0=m_par$l0, lambda1=m_par$l1, a=m_par$a0, b=m_par$b0)
     })
 
@@ -290,14 +306,14 @@ method_summary <- function(beta_true, active_groups, beta_hat,
 
 
 method_post_pred <- function(d, fit, method, quantiles=c(0.025, 0.975), 
-	return_samples=FALSE, mcn=1e4) 
+	return_samples=FALSE, samples=1e4) 
 {
     if (method == "spsl") {
 	pp <- spsl::spsl.predict(fit, d$test$X, quantiles=quantiles,
 	    return_samples=return_samples)
     } 
     if (method == "gsvb") {
-	pp <- gsvb::gsvb.predict(fit, d$test$X, mcn=mcn, 
+	pp <- gsvb::gsvb.predict(fit, d$test$X, samples=samples,
 	    quantiles=quantiles, return_samples=return_samples)
     }
     coverage <- mean((pp$quantiles[1, ] <= d$test$y) & (d$test$y <= pp$quantiles[2, ]))

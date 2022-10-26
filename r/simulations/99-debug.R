@@ -1,32 +1,43 @@
 # Misc code for debugging
 source("./00-functions.R")
 
-d <- dgp_diag(250, 5000, 10, 10, list(corr=0))
-m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3)
-f <- m_gsvb(d)
-f <- gsvb::gsvb.fit(d$y, d$X, d$groups, intercept=TRUE, a0=1, b0=200, track_elbo=FALSE)
+d <- dgp_diag(250, 1000, 10, 10, list(model="gaussian", corr=0))
+d <- dgp_diag(250, 1000, 10, 10, list(model="gaussian", corr=0))
+d <- dgp_diag(300, 1000, 5, 3, list(model="binomial", corr=0))
+d <- dgp_diag(250, 1000, 5, 3, list(model="poisson", corr=0))
 
-d <- dgp_block(200, 1000, 5, 3, list(corr=0.6, block_size=50), seed=84)
-m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3)
-f <- m_gsvb(d, m_par=m_par)
+plot(d$y)
 
-d <- dgp_block(200, 1000, 5, 3, list(corr=0.6, block_size=50), seed=91)
-m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3, diag_covariance=FALSE)
-f <- m_gsvb(d, m_par=m_par)
+m_par <- list(family="gaussian", lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3, diag_covariance=TRUE)
+m_par <- list(family="binomial-jensens", lambda=1, a0=1, b0=200, diag_covariance=FALSE)
+m_par <- list(family="binomial-jaakkola", lambda=1, a0=1, b0=200, diag_covariance=FALSE)
+m_par <- list(family="binomial-jaakkola", lambda=1, a0=1, b0=200, diag_covariance=TRUE)
+m_par <- list(family="binomial-refined", lambda=1, a0=1, b0=200, diag_covariance=FALSE)
+m_par <- list(family="poisson", lambda=1, a0=1, b0=200, diag_covariance=FALSE)
 
-pp <- gsvb::gsvb.predict(f, d$test$X, mcn)
+f <- m_gsvb(d, m_par)
+f <- m_spsl(d)
+f <- m_ssgl(d)
 
-mcn=1e4
-quantiles=c(0.025, 0.975)
-return_samples=F
-pp <- gsvb::gsvb.predict(f, d$test$X, mcn=mcn, 
-    quantiles=quantiles, return_samples=return_samples)
-coverage <- mean((pp$quantiles[1, ] <= d$test$y) & (d$test$y <= pp$quantiles[2, ]))
+# ----------------------------------------
+# m_run
+# ----------------------------------------
+setting_parameters <- list(n=250, p=1e3, g=5, s=3, dgp=dgp_wishart,
+	pars=list(model="gaussian", dof=3, weight=0.9), runs=10)
 
-pp$quantiles[1, ] <= d$test$y & d$test$y <= pp$quantiles[2, ]
+m_par <- list(family="gaussian", lambda=1, a0=1, b0=200, 
+    a_t=1e-3, b_t=1e-3, diag_covariance=TRUE)
+m_run(m_gsvb, m_par, setting_parameters, 2)
+
+m_par <- list(family="gaussian", l0=100, l1=1, a0=1, b0=200)
+m_run(m_ssgl, m_par, setting_parameters, 2)
 
 
 
+
+# ----------------------------------------
+# tryCatch
+# ----------------------------------------
 f <- function(x) 
 {
     a <- tryCatch({
@@ -41,18 +52,6 @@ f <- function(x)
     }
     return(ftime)
 }
-
-f(stop("123"))
-f(2)
-
-
-d <- dgp_wishart(200, 1000, 5, 3, list(dof=3, wieght=0.9))
-d <- dgp_diag(200, 1000, 5, 3, pars=list(corr=0))
-m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3)
-
-f <- m_gsvb(d)
-
-f <- gsvb::gsvb.fit(d$y, d$X, d$groups, intercept=TRUE, a0=1, b0=200, track_elbo=FALSE)
 
 
 # ----------------------------------------
