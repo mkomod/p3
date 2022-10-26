@@ -30,10 +30,10 @@ dg <- list(
     ),
     # settings for each process
     s=list(
-	list(model="gaussian", corr=0),
-	list(model="gaussian", corr=0.6),
-	list(model="gaussian", corr=0.6, block_size=50),
-	list(model="gaussian", dof=3, weight=0.9)
+	list(model="binomial", corr=0),
+	list(model="binomial", corr=0.6),
+	list(model="binomial", corr=0.6, block_size=50),
+	list(model="binomial", dof=3, weight=0.9)
     )
 )
 
