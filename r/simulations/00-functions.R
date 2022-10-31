@@ -244,15 +244,23 @@ m_spsl <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100,
 
 m_ssgl <- function(d, m_par=list(family="gaussian", l0=20, l1=1, a0=1, b0=100)) 
 {
-    fit.time <- system.time({
-	fit <- sparseGAM::SSGL(d$y, d$X, d$X, d$groups, family=m_par$family,
-	    lambda0=m_par$l0, lambda1=m_par$l1, a=m_par$a0, b=m_par$b0)
-    })
+    tryCatch({
+	fit.time <- system.time({
+	    fit <- sparseGAM::SSGL(d$y, d$X, d$X, d$groups, family=m_par$family,
+		lambda0=m_par$l0, lambda1=m_par$l1, a=m_par$a0, b=m_par$b0)
+	})
 
-    active_groups <- rep(0, length(unique(d$groups)))
-    active_groups[d$active_groups] <- 1
-    res <- method_summary(d$b, active_groups, fit$beta, fit$classifications, 0.5)
-    return(c(unlist(res), unlist(fit.time[3])))
+	active_groups <- rep(0, length(unique(d$groups)))
+	active_groups[d$active_groups] <- 1
+	res <- method_summary(d$b, active_groups, fit$beta, fit$classifications, 0.5)
+	return(c(unlist(res), unlist(fit.time[3])))
+    }, error=function(e) 
+    {
+	cat("error in run: ", d$seed)
+	print(e)
+
+	return(rep(NA, 213))
+    })
 }
 
 
