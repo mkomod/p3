@@ -7,7 +7,7 @@ source("00-functions.R")
 DGP <- read.env("DGP", 4)
 SIM <- read.env("SIM", 1)
 MET <- read.env("MET", 1:3)
-CORES <- read.env("CORES", 1)
+CORES <- read.env("CORES", 3)
 
 # if (SIM > 4 && 3 %in% MET) MET <- MET[-which(MET == 3)]
 
@@ -45,8 +45,10 @@ m <- list(
 	m_ssgl   # SSGL (SpSL Group LASSO)
     ),
     p=list(
-	list(family="poisson", lambda=1, a0=1, b0=p/g + 1, diag_covariance=TRUE),
-	list(family="poisson", lambda=1, a0=1, b0=p/g + 1, mcmc_samples=10e3),
+	list(family="poisson", lambda=1, a0=1, b0=p/g + 1, diag_covariance=TRUE, 
+	     intercept=FALSE),
+	list(family="poisson", lambda=1, a0=1, b0=p/g + 1, mcmc_samples=10e3,
+	     intercept=FALSE),
 	list(family="poisson", l0=100, l1=1, a0=1, b0=p/g)
     )
 )

@@ -167,12 +167,12 @@ m_run <- function(method, method_par, setting_par, CORES)
 
 
 m_gsvb <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100, 
-	a_t=1e-3, b_t=1e-3, diag_covariance=TRUE))
+	a_t=1e-3, b_t=1e-3, diag_covariance=TRUE, intercept=TRUE))
 {
     tryCatch({
 	fit.time <- system.time({
 	    fit <- gsvb::gsvb.fit(d$y, d$X, d$groups, 
-		family=m_par$family, intercept=TRUE, 
+		family=m_par$family, intercept=m_par$intercept, 
 		diag_covariance=m_par$diag_covariance, lambda=m_par$lambda,
 		a0=m_par$a0, b0=m_par$b0, tau_a0=m_par$a_t, tau_b0=m_par$b_t,
 		niter=500, track_elbo=FALSE)
@@ -180,7 +180,11 @@ m_gsvb <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100,
 
 	active_groups <- rep(0, length(unique(d$groups)))
 	active_groups[d$active_groups] <- 1
-	res <- method_summary(d$b, active_groups, fit$beta_hat[-1], fit$g[-1], 0.5)
+	if (m_par$intercept) {
+	    res <- method_summary(d$b, active_groups, fit$beta_hat[-1], fit$g[-1], 0.5)
+	} else {
+	    res <- method_summary(d$b, active_groups, fit$beta_hat, fit$g, 0.5)
+	}
 	
 	coverage.beta <- method_coverage(d, fit, "gsvb", prob = 0.95)
 
@@ -206,17 +210,23 @@ m_gsvb <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100,
 
 
 m_spsl <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100, 
-    a_t=1e-3, b_t=1e-3, mcmc_samples=10e3))
+    a_t=1e-3, b_t=1e-3, mcmc_samples=10e3, intercept=TRUE))
 {
     fit.time <- system.time({
 	fit <- spsl::spsl.fit(d$y, d$X, d$groups, family=m_par$family,
-	    lambda=m_par$lambda, a_0=m_par$a0, b_0=m_par$b0, a_t=m_par$a_t,
-	    b_t=m_par$b_t, mcmc_sample=m_par$mcmc_samples)
+	    intercept=m_par$intercept, lambda=m_par$lambda, a_0=m_par$a0, 
+	    b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
+	    mcmc_sample=m_par$mcmc_samples)
     })
 
     active_groups <- rep(0, length(unique(d$groups)))
     active_groups[d$active_groups] <- 1
-    res <- method_summary(d$b, active_groups, fit$beta_hat[-1], fit$g[-1], 0.5)
+
+    if (m_par$intercept) {
+	res <- method_summary(d$b, active_groups, fit$beta_hat[-1], fit$g[-1], 0.5)
+    } else {
+	res <- method_summary(d$b, active_groups, fit$beta_hat, fit$g, 0.5)
+    }
 
     coverage.beta <- method_coverage(d, fit, "spsl", prob = 0.95)
 
