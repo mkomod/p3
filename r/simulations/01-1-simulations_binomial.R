@@ -6,15 +6,15 @@ source("00-functions.R")
 
 DGP <- read.env("DGP", 4)
 SIM <- read.env("SIM", 1)
-MET <- read.env("MET", 1:6)
-CORES <- read.env("CORES", 1)
+MET <- read.env("MET", 1:5)
+CORES <- read.env("CORES", 20)
 
 # if (SIM > 4 && 3 %in% MET) MET <- MET[-which(MET == 3)]
 
 # ----------------------------------------
 # Simulation settings
 # ----------------------------------------
-n <- c(250, 250, 250, 250) [SIM]
+n <- c(350, 350, 350, 350) [SIM]
 p <- c(1e3, 1e3, 1e3, 1e3) [SIM]
 g <- c(5,   5,   10,  10)  [SIM]
 s <- c(5,   10,  5,   10)  [SIM]
@@ -43,7 +43,7 @@ m <- list(
 	m_gsvb,  # GSVB (ours, jensens) 
 	m_gsvb,  # GSVB (ours, jaakkola)
 	m_gsvb,  # GSVB (ours, jaakola non diag)
-	m_gsvb,  # GSVB (ours, refined)
+	# m_gsvb,  # GSVB (ours, refined)
 	m_spsl,  # SpSL (mcmc)
 	m_ssgl   # SSGL (SpSL Group LASSO)
     ),
@@ -54,8 +54,8 @@ m <- list(
 	     diag_covariance=TRUE, intercept=TRUE),
 	list(family="binomial-jaakkola", lambda=1, a0=1, b0=p/g,
 	     diag_covariance=TRUE, intercept=TRUE),
-	list(family="binomial-refined",  lambda=1, a0=1, b0=p/g,
-	     diag_covariance=TRUE, intercept=TRUE),
+	# list(family="binomial-refined",  lambda=1, a0=1, b0=p/g,
+	#      diag_covariance=TRUE, intercept=TRUE),
 	list(family="binomial", lambda=1, a0=1, b0=p/g, 
 	     mcmc_samples=10e3, intercept=TRUE),
 	list(family="binomial", l0=100, l1=1, a0=1, b0=p/g)
