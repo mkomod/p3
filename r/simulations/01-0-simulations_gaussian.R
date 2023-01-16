@@ -46,9 +46,12 @@ m <- list(
 	m_ssgl   # SSGL (SpSL Group LASSO)
     ),
     p=list(
-	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, diag_covariance=TRUE),
-	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, diag_covariance=FALSE),
-	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, mcmc_samples=10e3),
+	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, diag_covariance=TRUE, 
+	     intercept=TRUE),
+	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, diag_covariance=FALSE,
+	     intercept=TRUE),
+	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, mcmc_samples=10e3,
+	     intercept=TRUE),
 	list(family="gaussian", l0=100, l1=1, a0=1, b0=p/g)
     )
 )
