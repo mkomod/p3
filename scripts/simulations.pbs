@@ -11,6 +11,6 @@ export CORES=100
 # export SIM=1
 
 cd $PROJ_DIR/r/simulations
-Rscript 01-simulations.R > \
+Rscript 01-0-simulations_gaussian.R > \
     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
 
