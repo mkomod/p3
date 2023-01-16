@@ -66,7 +66,7 @@ for (i in DGP)
 	pars=dg$s[[i]], runs=runs)
     
     for (j in MET) {
-	rname <- sprintf("d_%d_%d", i, SIM, j)
+	rname <- sprintf("%d_%d_%d", i, SIM, j)
 	assign(rname, m_run(m$m[[j]], m$p[[j]], setting_parameters, CORES))
 	save(list=c(rname), file=sprintf("../../rdata/simulations/gaussian/%s.RData", rname))
     }
