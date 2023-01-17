@@ -4,20 +4,21 @@ library(sparseGAM)                      # install.packages("sparseGAM")
 
 source("00-functions.R")
 
-DGP <- read.env("DGP", 4)
+DGP <- read.env("DGP", 1:4)
 SIM <- read.env("SIM", 1)
-MET <- read.env("MET", 1:5)
-CORES <- read.env("CORES", 20)
+MET <- read.env("MET", 1:3)
+CORES <- read.env("CORES", 1)
 
-# if (SIM > 4 && 3 %in% MET) MET <- MET[-which(MET == 3)]
+if (SIM > 4 && 3 %in% MET) MET <- MET[-which(MET == 3)]
 
 # ----------------------------------------
 # Simulation settings
 # ----------------------------------------
-n <- c(350, 350, 350) [SIM]
-p <- c(1e3, 1e3, 1e3) [SIM]
-g <- c(5,   5,   5)  [SIM]
-s <- c(1,   3,   5)  [SIM]
+n <- c(350, 350) [SIM]
+p <- c(1e3, 1e3) [SIM]
+g <- c(5,   5)  [SIM]
+s <- c(3,   5)  [SIM]
+bmax <- 1.5
 runs <- 100
 
 dg <- list(
@@ -43,7 +44,6 @@ m <- list(
 	m_gsvb,  # GSVB (ours, jensens) 
 	m_gsvb,  # GSVB (ours, jaakkola)
 	m_gsvb,  # GSVB (ours, jaakola non diag)
-	# m_gsvb,  # GSVB (ours, refined)
 	m_spsl,  # SpSL (mcmc)
 	m_ssgl   # SSGL (SpSL Group LASSO)
     ),
@@ -53,9 +53,7 @@ m <- list(
 	list(family="binomial-jaakkola", lambda=1, a0=1, b0=p/g,
 	     diag_covariance=TRUE, intercept=TRUE),
 	list(family="binomial-jaakkola", lambda=1, a0=1, b0=p/g,
-	     diag_covariance=TRUE, intercept=TRUE),
-	# list(family="binomial-refined",  lambda=1, a0=1, b0=p/g,
-	#      diag_covariance=TRUE, intercept=TRUE),
+	     diag_covariance=FALSE, intercept=TRUE),
 	list(family="binomial", lambda=1, a0=1, b0=p/g, 
 	     mcmc_samples=10e3, intercept=TRUE),
 	list(family="binomial", l0=100, l1=1, a0=1, b0=p/g)
@@ -68,13 +66,14 @@ m <- list(
 # ----------------------------------------
 for (i in DGP)
 {
-    setting_parameters <- list(n=n, p=p, g=g, s=s, dgp=dg$p[[i]], 
+    setting_parameters <- list(n=n, p=p, g=g, s=s, bmax=bmax, dgp=dg$p[[i]], 
 	pars=dg$s[[i]], runs=runs)
     
     for (j in MET) {
 	rname <- sprintf("%d_%d_%d", i, SIM, j)
 	assign(rname, m_run(m$m[[j]], m$p[[j]], setting_parameters, CORES))
-	save(list=c(rname), file=sprintf("../../rdata/simulations/binomial/%s.RData", rname))
+	save(list=c(rname), file=sprintf("../../rdata/simulations/binomial/mcmc/%s.RData", rname))
+	# save(list=c(rname), file=sprintf("../../rdata/simulations/binomial/comp/%s.RData", rname))
     }
 }
 
