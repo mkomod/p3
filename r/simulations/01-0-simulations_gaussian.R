@@ -63,7 +63,7 @@ m <- list(
 # ----------------------------------------
 for (i in DGP)
 {
-    setting_parameters <- list(n=n, p=p, g=g, s=s, bmax=1.5, dgp=dg$p[[i]], 
+    setting_parameters <- list(n=n, p=p, g=g, s=s, bmax=bmax, dgp=dg$p[[i]], 
 	pars=dg$s[[i]], runs=runs)
     
     for (j in MET) {
