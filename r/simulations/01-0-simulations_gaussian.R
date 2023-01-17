@@ -18,6 +18,7 @@ n <- c(200, 200, 200, 200, 250, 500, 1e3, 250, 500, 1e3) [SIM]
 p <- c(1e3, 1e3, 1e3, 1e3, 5e3, 5e3, 5e3, 5e3, 5e3, 5e3) [SIM]
 g <- c(5,   5,   10,  10,   10,  10,  10,  10,  10,  10) [SIM]
 s <- c(5,   10,  5,   10,   10,  10,  10,  20,  20,  20) [SIM]
+bmax <- 1.5
 runs <- 100
 
 dg <- list(
@@ -62,7 +63,7 @@ m <- list(
 # ----------------------------------------
 for (i in DGP)
 {
-    setting_parameters <- list(n=n, p=p, g=g, s=s, dgp=dg$p[[i]], 
+    setting_parameters <- list(n=n, p=p, g=g, s=s, bmax=1.5, dgp=dg$p[[i]], 
 	pars=dg$s[[i]], runs=runs)
     
     for (j in MET) {

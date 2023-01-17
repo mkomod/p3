@@ -4,7 +4,7 @@ library(mvtnorm)
 # ----------------------------------------
 # Data generating processes
 # ----------------------------------------
-.dgp_base <- function(n, p, gsize, s, b, seed)
+.dgp_base <- function(n, p, gsize, s, bmax, b, seed)
 {
     set.seed(seed)
 
@@ -22,7 +22,7 @@ library(mvtnorm)
 	for (a in active_groups) {
 	    gk <- which(groups == a)
 	    m <- length(gk)
-	    b[gk] <- sample(c(1, -1), m, replace=T) * runif(m, min=0, max=1)
+	    b[gk] <- sample(c(1, -1), m, replace=T) * runif(m, min=0, max=bmax)
 	}
     }
     
@@ -53,10 +53,10 @@ library(mvtnorm)
 }
 
 
-dgp_diag <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1, n.test=100)
+dgp_diag <- function(n, p, gsize, s, bmax, pars, b=NULL, seed=1, sig=1, n.test=100)
 {
     N <- ifelse(n.test > 0, n + n.test, n)
-    res <- .dgp_base(N, p, gsize, s, b, seed)
+    res <- .dgp_base(N, p, gsize, s, bmax, b, seed)
 
     # unpack pars
     model <- pars[[1]]
@@ -77,10 +77,10 @@ dgp_diag <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1, n.test=100)
 }
 
 
-dgp_block <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1, n.test=100)
+dgp_block <- function(n, p, gsize, s, bmax, pars, b=NULL, seed=1, sig=1, n.test=100)
 {
     N <- ifelse(n.test > 0, n + n.test, n)
-    res <- .dgp_base(N, p, gsize, s, b, seed)
+    res <- .dgp_base(N, p, gsize, s, bmax, b, seed)
 
     # unpack pars
     model <- pars[[1]]
@@ -106,11 +106,11 @@ dgp_block <- function(n, p, gsize, s, pars, b=NULL, seed=1, sig=1, n.test=100)
 }
 
 
-dgp_wishart <- function(n, p, gsize, s, pars=list(dof=3, weight=0.9), 
+dgp_wishart <- function(n, p, gsize, s, bmax, pars=list(dof=3, weight=0.9), 
     b=NULL, seed=1, sig=1, n.test=100)
 {
     N <- ifelse(n.test > 0, n + n.test, n)
-    res <- .dgp_base(N, p, gsize, s, b, seed)
+    res <- .dgp_base(N, p, gsize, s, bmax, b, seed)
 
     # unpack pars
     model <- pars[[1]]
@@ -158,7 +158,7 @@ m_run <- function(method, method_par, setting_par, CORES)
     # run the method
     res <- parallel::parSapply(cl, 1:runs, function(run) {
 	cat(run, "\t")
-	d <- dgp(n, p, g, s, pars, seed=run)
+	d <- dgp(n, p, g, s, bmax, pars, seed=run)
 	method(d, method_par)
     })
 
