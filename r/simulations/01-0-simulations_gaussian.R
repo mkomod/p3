@@ -6,7 +6,7 @@ source("00-functions.R")
 
 DGP <- read.env("DGP", 1:4)
 SIM <- read.env("SIM", 1)
-MET <- read.env("MET", 1:4)
+MET <- read.env("MET", 1:3)
 CORES <- read.env("CORES", 1)
 
 if (SIM > 4 && 3 %in% MET) MET <- MET[-which(MET == 3)]
@@ -68,7 +68,8 @@ for (i in DGP)
     for (j in MET) {
 	rname <- sprintf("%d_%d_%d", i, SIM, j)
 	assign(rname, m_run(m$m[[j]], m$p[[j]], setting_parameters, CORES))
-	save(list=c(rname), file=sprintf("../../rdata/simulations/gaussian/%s.RData", rname))
+	save(list=c(rname), file=sprintf("../../rdata/simulations/gaussian/mcmc/%s.RData", rname))
+	# save(list=c(rname), file=sprintf("../../rdata/simulations/gaussian/comp/%s.RData", rname))
     }
 }
 
