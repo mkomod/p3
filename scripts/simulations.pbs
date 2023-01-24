@@ -18,5 +18,5 @@ cd $PROJ_DIR/r/simulations
 # Rscript 01-1-simulations_binomial.R > \
 #     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
 
-Rscript 01-0-simulations_poisson.R > \
+Rscript 01-1-simulations_poisson.R > \
     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
