@@ -22,7 +22,7 @@ library(mvtnorm)
 	for (a in active_groups) {
 	    gk <- which(groups == a)
 	    m <- length(gk)
-	    b[gk] <- sample(c(1, -1), m, replace=T) * runif(m, min=0, max=bmax)
+	    b[gk] <- sample(c(1, -1), m, replace=T) * runif(m, min=0.2, max=bmax)
 	}
     }
     
@@ -210,13 +210,13 @@ m_gsvb <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100,
 
 
 m_spsl <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100, 
-    a_t=1e-3, b_t=1e-3, mcmc_samples=10e3, intercept=TRUE))
+    a_t=1e-3, b_t=1e-3, mcmc_samples=10e3, burnin=5e3, intercept=TRUE))
 {
     fit.time <- system.time({
 	fit <- spsl::spsl.fit(d$y, d$X, d$groups, family=m_par$family,
 	    intercept=m_par$intercept, lambda=m_par$lambda, a_0=m_par$a0, 
 	    b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
-	    mcmc_sample=m_par$mcmc_samples)
+	    mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin)
     })
 
     active_groups <- rep(0, length(unique(d$groups)))
