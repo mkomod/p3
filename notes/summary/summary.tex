@@ -1,0 +1,421 @@
+\documentclass[12pt]{article}
+
+\input{settings.tex}
+\input{shorthand.tex}
+
+\begin{document}
+\chead{Group Sparse Variational Bayes}
+
+\subsection*{Problem formulation}
+
+We are interested in modelling,
+\begin{equation} \label{eq:prob_formulation} 
+    \E \left[ Y | X, \beta \right] = f(X \beta)
+\end{equation}
+where for $n$ observations and $p$ features, $Y = (Y_1, \dots, Y_n)^\top$ is a random vector in $\R^n$ whose realizations are denoted by $y = (y_1, \dots, y_n)^\top \in \R^n$, $X = (x_1, \dots, x_n)^\top \in \R^{n \times p}$ is the design matrix with $x_i = (x_{i1}, \dots, x_{ip})^\top \in \R^p$ being the feature vector for the $i$th sample, $\beta = (\beta_1, \dots, \beta_p)^\top \in \R^p$ is the model coefficient vector and $f: \R \rightarrow \R$ is a link function applied element-wise to $X \beta$.
+
+\subsection*{Notation}
+
+Throughout we define the groups $G_k = \{ G_{k,1}, \dots, G_{k, m_k} \}$ for $k=1,\dots,M$, to be disjoint sets of indices of size $m_k$ such that $ \bigcup_{k=1}^M G_k = \{1, \dots, p \}$ and let $G_k^c = \{1,\dots, p \} \setminus G_k$. Further, denote $X_{G_k} = (x_{1, G_k}, \dots, x_{n, G_K})^\top \in \R^{n \times m_k}$ where $x_{i, G_k} = \{x_{ij} : j \in G_k \}$,
+$X_{G_k^c} = (x_{1, G_k^c}, \dots, x_{n, G_K^c})^\top \in \R^{n \times (p - m_k)}$ where $x_{i, G_k^c} = \{x_{ij} : j \in G_k^c \}$, $\beta_{G_k} = \{\beta_j : j \in G_k \}$ and $\beta_{G_k^c} = \{ \beta_j : j \in G_k^c \}$.
+
+
+\subsection*{Contributions}
+
+\begin{itemize}
+    \item TODO
+\end{itemize}
+
+
+\newpage
+\subsection*{Prior and Posterior}
+
+For the model parameters $\beta$ we consider a group spike-and-slab (GSpSL) prior, which has a hierarchical representation,
+\begin{equation}
+\begin{aligned}
+    \beta_{G_k} | z_k \overset{\text{ind}}{\sim} &\ z_k \Psi(\beta_{G_k}; \lambda) + (1-z_k) \delta_0(\beta_{G_k}) \\
+    z_k | \theta_k \overset{\text{ind}}{\sim} &\ \text{Bernoulli}(\theta_k) \\
+    \theta_k \overset{\text{iid}}{\sim} &\ \text{Beta}(a_0, b_0)
+\end{aligned}
+\end{equation}
+for $k=1,\dots,M$, where $\delta_0(\beta_{G_k})$ is the multivariate Dirac mass on zero with dimension $m_k = \dim(\beta_{G_k})$, and $\Psi(\beta_{G_k})$ is the multivariate double exponential distribution with density
+\begin{equation} \label{eq:density_mvde}
+    \psi(\beta_{G_k}; \lambda) = C_k \lambda^{m_k} \exp \left( - \lambda \| \beta_{G_k} \| \right)
+\end{equation}
+where $ C_k = \left[ 2^{m_k} \pi^{(m_k -1)/2} \Gamma \left( (m_k + 1) /2 \right) \right]^{-1} $ and $ \| \cdot \| $ is the $\ell_2$-norm.
+
+
+\subsection*{Variational Families}
+
+We introduce two variational families. The first is a fully factorized mean-field variational family,
+\begin{equation}
+\begin{aligned}
+    \Q = &\
+    \left\{ Q(\mu, \sigma, \gamma) = 
+	\bigotimes_{k=1}^M 
+	\left[ 
+	    \gamma_k\ N\left(\mu_{G_k}, \diag(\sigma_{G_k}^2) \right) + 
+	    (1-\gamma_k) \delta_0
+	\right] 
+    \right\} 
+    % \\
+    % \times &\
+    % \{ \Gamma^{-1}(a', b') \}
+\end{aligned}
+\end{equation}
+where $\mu \in \R^p$ with $\mu_{G_k} = \{ \mu_j : j \in G_k \}$, $\sigma^2 \in \R_+^p$ with $\sigma^2_{G_k} = \{\sigma^2_j : j \in G_k \}$, $ \gamma = (\gamma_1, \dots, \gamma_M)^\top \in [0, 1]^M $, 
+% $a' > 0, b' > 0$, 
+and $N(\mu, \Sigma)$ denotes the multivariate Normal distribution with mean parameter $\mu$ and covariance $\Sigma$. The second, is variational family with unrestricted covariance within groups,
+\begin{equation}
+\begin{aligned}
+    \Q' = &\
+    \left\{ Q'(\mu, \Sigma, \gamma) = 
+	\bigotimes_{k=1}^M 
+	\left[ 
+	    \gamma_k\ N\left(\mu_{G_k}, \Sigma_{G_k} \right) + 
+	    (1-\gamma_k) \delta_0
+	\right] 
+    \right\} 
+    % \\
+    % \times &\
+    % \{ \Gamma^{-1}(a', b') \}
+\end{aligned}
+\end{equation}
+where $\Sigma \in \R^{p \times p}$ is a covariance matrix for which $\Sigma_{ij} = 0$, for $i \in G_k, j \in G_l, k \neq l$ (i.e. there is independence between groups) and $\Sigma_{G_k} = (\Sigma_{ij})_{i, j \in G_k} \in \R^{m_k \times m_k}$ denotes the covariance matrix of the $k$th group. 
+
+Note that $\Q \subset \Q'$, therefore $\Q'$ should provide greater flexibility in approximating the posterior. Additionally $\Q'$ should capture the dependence between coefficients in the same group, i.e. between the elements of $\beta_{G_k}$.
+
+\subsection*{Computing the variational posterior}
+
+The variational posterior is given by solving,
+\begin{equation} \label{eq:opt} 
+    \tilde{\Pi} = \underset{\mu, \sigma, \gamma}{\argmin}\ \E_{Q} \left[ 
+	\log \frac{dQ}{d\Pi} -\ell(\D; \beta) 
+    \right]
+\end{equation}
+where $\ell$ is the log-likelihood for a given model. As this optimization problem is generally not convex, we approach it via co-ordinate ascent variational inference. Wherein, for each group $k=1,\dots,M$, we update the parameters for the group keeping the remainder fixed, formally this is detailed in \Cref{alg:cavi_gsvb}.
+
+\begin{algorithm}[htp]
+    \caption{General CAVI strategy for computing the variational posterior}
+    \label{alg:cavi_gsvb}
+    \begin{algorithmic}[0]
+	% \State \textbf{require} $ \D, \lambda, a_0, b_0$
+	\vspace{.3em}
+	\State Initialize $ \mu, \sigma, \gamma $
+	\NoDo \While {not converged} \NoDo
+	    \NoDo \For {$k = 1,\dots, M $}
+	    \State $ \mu_{G_k} \leftarrow {\argmin}_{\mu_{G_k} \in \R^{m_k}} \E_{Q | z_k = 1} \left[ \log (dQ/d\Pi) - \ell(\D; \beta) \ | \ \mu_{G_k^c}, \sigma, \gamma_{-k} \right]$
+	    \State $ \sigma_{G_k} \leftarrow {\argmin}_{\sigma_{G_k} \in \R^{m_k}_+} \E_{Q | z_k = 1} \left[ \log (dQ/d\Pi) - \ell(\D; \beta) \ | \ \mu, \sigma_{G_k^c}, \gamma_{-k} \right]$
+	    \State $ \gamma_{k}\ \  \leftarrow {\argmin}_{\gamma_{k} \in [0, 1]}\ \ \E_Q \left[ \log (dQ/d\Pi) - \ell(\D; \beta)\  | \ \mu, \sigma, \gamma_{-k} \ \right]$
+	    \EndFor
+	\EndWhile
+	\State \Return $ \mu, \sigma, \gamma $.
+    \end{algorithmic}
+\end{algorithm}
+
+Regardless of the form of log-likelihood, the Radon-Nikodym derivative between the variational family and the prior can be expressed as
+$$
+\log \frac{dQ}{d\Pi}(\beta) = \sum_{k=1}^M \log \frac{d Q_k}{d\Pi_k} (\beta_{G_k}) 
+= \sum_{k=1}^M \mathbb{I}_{z_k = 1} \log \frac{\gamma_k dN_k}{\bar{w} d \Psi_k}(\beta_{G_k})
++ \mathbb{I}_{z_k = 0} \log \frac{1-\gamma_k}{1 - \bar{w}} \frac{d \delta_0}{d \delta_0} (\beta_{G_k})
+$$
+Under this factorization it follows that
+\begin{equation}
+\begin{aligned}
+\E_{Q} \left[ \log \frac{d Q}{d \Pi} \right] = &\
+    \sum_{k=1}^M 
+\bigg(
+    \gamma_k \log \frac{\gamma_k}{\bar{w}}
+-
+    \frac{\gamma_k}{2} \log( \det (2 \pi \Sigma_k))
+-
+    \frac{\gamma_k m_k}{2}
+- 
+    \gamma_k \log(C_k) \\
+- &\
+    \gamma_k m_k \log (\lambda)
++
+    \E_Q \left[ \I_{z_k =1} \lambda \| \beta_{G_k} \| \right]
++
+    (1-\gamma_k) \log \frac{1 - \gamma_k}{1 - \bar{w}}
+\bigg)
+\end{aligned}
+\end{equation}
+Since, $\E_Q \left[ \I_{z_k =1} \lambda \| \beta_{G_k} \| \right]$ does not have a closed form, we upper bound this quantity by
+\begin{equation}
+    \E_Q \left[ \I_{z_k =1} \lambda \| \beta_{G_k} \| \right] = \gamma_k \E_{N_k} \left[ \lambda \| \beta_{G_k} \| \right] \leq \gamma_k \lambda \left( \sum_{i \in G_k} \Sigma_{ii} + \mu_i^2 \right)^{1/2}
+\end{equation}
+
+\section*{Model classes}
+
+We consider three common classes of models: Gaussian, Binomial and Poisson. For each class the co-ordinate update equations are provided for both variational families.
+
+
+\subsection*{Gaussian}
+
+Under the Gaussian linear model $Y_i \overset{\text{iid}}{\sim} N(x_i^\top \beta, \tau^2)$ where $\tau^2 > 0$ is an unknown variance and the canonical link function is $f(x) = x$. Hence the log-likelihood is given as,
+\begin{equation} \label{eq:log-likelihood}
+    \ell(\D; \beta, \tau^2) = - \frac{n}{2}\log(2\pi\tau^2) - \frac{1}{2\tau^2} \| y - X \beta \|^2 
+\end{equation}
+where $\D = \{ (y_i, x_i) \}_{i=1}^n$.
+
+To model this family, an Inverse-Gamma prior is placed on the nuisance parameter $\tau^2$, formally, $\tau^2 \overset{\text{ind}}{\sim} \IG(a, b)$, where $a, b > 0$. Further, we extend the variational family to take $\tau^2$ into account by letting $\Q_\tau = \Q \times \{ \IG(a', b') : a' > 0, b' > 0 \}$. 
+
+Evaluating an expression for the expected value of the negative log-likelihood,
+\begin{equation}
+\begin{aligned}
+\E_{Q_\tau} \left[ - \ell(\D; \beta, \tau^2) \right]
+= &\ 
+    \frac{a'}{2b'} \left( \| y \|^2  
++ 
+    \sum_{i,j=1}^p(X^\top X)_{ij} \E_Q \left[ \beta_i \beta_j \right] \right)
+-
+    \sum_{k=1}^M \left( \frac{a'}{b'} \gamma_k \langle y, X_{G_k} \mu_{G_k} \rangle \right) \\
++ &\ 
+    \frac{n}{2} (\log(2 \pi) + \log(b') - \kappa(a'))
+\end{aligned}
+\end{equation}
+where
+
+
+
+\newpage
+\subsection*{Binomial}
+
+Under the binomial family $Y_i \overset{\text{iid}}{\sim} \text{Bernoulli}(p)$ where $p \in (0, 1)$ and the canonical link function is the popular logistic function wherein,
+\begin{equation}
+    \E[Y_i | x_i, \beta] = p = \logistic(x^\top \beta) =  \frac{\exp(x^\top \beta)}{1 + \exp(x^\top \beta)}
+\end{equation}
+Under this model the log-likelihood is,
+\begin{equation}
+    \ell(\D, \beta) 
+    = 
+	\sum_{i=1}^n  y_i \left( x_i^\top \beta \right) 
+	- \log \left(1 + \exp(x_i^\top \beta) \right)
+\end{equation}
+
+\subsection*{Bound using Jensen's inequality}
+
+Bounding the likelihood using Jensen's inequality is straightforward,
+\begin{align}
+    \E_Q \left[ - \ell(\D; \beta) \right]
+    =&\ 
+	\sum_{i=1}^n  \E_Q \left[
+	    \log \left(1 + \exp(x_i^\top \beta) \right) 
+	    -
+	    y_i \left( x_i^\top \beta \right) 
+	\right] 
+    \nonumber \\
+    \leq &\ 
+	\sum_{i=1}^n  
+	    \log \left(1 + \E_Q \left[ \exp(x_i^\top \beta) \right] \right) 
+	    -
+	    y_i \sum_{k=1}^M \gamma_k \sum_{j \in G_k} x_{ij} \mu_{j}
+    \label{eq:logistic_jensens}
+\end{align}
+where
+\begin{equation*}
+    \E_Q \left[ \exp(x_i^\top \beta) \right]
+    =	
+	\prod_{k=1}^M \gamma_k \exp \left\{ 
+	    \sum_{j \in G_k} 
+	    x_{ij} \mu_{j}
+	    + 
+	    \frac{1}{2} x_{ij}^2 \sigma_{j}^2
+	\right\}
+	+
+	(1- \gamma_k)
+\end{equation*}
+Based on \eqref{eq:logistic_jensens} it is straightforward to derive the update equations for $\mu_{G_k}, \sigma_{G_k}$ and $\gamma_k$.
+
+
+\subsection*{Bound based on \cite{Jakkola97}}
+
+\cite{Jakkola97} introduce a quadratic bound for the sigmoid function $\sigmoid(x) = (1 + \exp(-x))^{-1}$, given as
+\begin{equation} \label{eq:jj_bound}
+    \sigmoid(x) 
+    \geq 
+	\sigmoid(t)
+	\exp \left\{
+	    \frac{x-t}{2}
+	    -
+	    \frac{a(t)}{2} (x^2 - t^2)
+	\right\}
+\end{equation}
+where $a(t) = \frac{\sigmoid (t) - 1/2}{t}$ and $t$ is a variational parameter that must be optimized to ensure the bound is tight.
+
+Using the fact that $\P(Y=y_i | X=x_i)$ can be written as $e^{y_i x_i^\top \beta} \sigmoid(- x_i^\top \beta)$, we have
+\begin{align}
+    - \ell(\D; &\ \beta)
+    = 
+	\sum_{i=1}^n  
+	    - y_i x_i^\top \beta 
+	    - \log \sigmoid (-x_i^\top \beta)
+    \nonumber \\
+    \leq &\
+	\sum_{i=1}^n  
+	    - y_i x_i^\top \beta 
+	    - \log \sigmoid (t_i)
+	    + \frac{x_i^\top \beta + t_i}{2}
+	    + \frac{a(t_i)}{2} ((x_i^\top \beta)^2 - t_i^2)
+    \nonumber \\
+    = &\ 
+	- \langle y,  X^\top \beta \rangle 
+	- \langle 1, \log s(t) \rangle
+	+ \frac{1}{2} \left(
+	    \langle 1, X^\top \beta + t \rangle
+	    + \beta^\top X^\top A_t X \beta 
+	    - t^\top A_t t
+	\right)
+    \label{eq:jj_likelihood}
+\end{align}
+where $t_i$ is a variational parameter for each observation, $t=(t_1, \dots, t_n)^\top$, $A_t =\diag(a(t_i), \dots, a(t_n))$, $s(t) = (s(t_1), \dots, s(t_n))^\top$, and operators to vectors are performed element-wise, e.g. $\log s(t) = (\log s(t_i))_{i=1}^n$. Combining \eqref{eq:jj_likelihood} with results seen in the linear regression setting, it is straightforward to obtain the necessary update equations. 
+
+Taking the expectation of \eqref{eq:jj_likelihood} wrt. $Q$, gives,
+\begin{equation} \label{eq:jj_expectation_Q} 
+\begin{aligned}
+    \left(
+    \sum_{k = 1}^M 
+	\gamma_k \langle 1/2 - y,  X_{G_k} \mu_{G_k} \rangle 
+    \right) 
+    +
+    \frac{1}{2}
+    \left(
+	\sum_{i,j=1}^p 
+	    (X^\top A_t X)_{ij} \E_Q [ \beta_i \beta_j ]
+    \right)
+    - 
+    \frac{t^\top A_t t}{2}
+    \\
+    + \langle 1, t/2 - \log s(t) \rangle
+\end{aligned}
+\end{equation}
+
+Updates for $\mu_{G_k}$ and $\sigma_{G_k}$ are given by finding the minimizers of 
+\begin{equation}
+\begin{aligned}
+    & 
+    \langle 1/2 - y,  X_{G_k} \mu_{G_k} \rangle 
+    + \frac{1}{2} \left( 
+	\mu_{G_k}^\top X_{G_k}^\top A_t X_{G_k} \mu_{G_k} 
+	+ \sum_{i \in G_k} (X^\top A_t X)_{ii} \sigma_{i}^2 
+	% - t^\top A_t t
+    \right)
+    \\
+    & 
+    + \sum_{j \neq k} \gamma_j \mu_{G_k}^\top X_{G_k}^\top A_t X_{G_j} \mu_{G_j} 
+    % + \langle 1, t/2 - \log s(t) \rangle
+    + \lambda \left( \sigma_{G_k}^\top \sigma_{G_k} + \mu_{G_k}^\top \mu_{G_k} \right)^{1/2} 
+    - \sum_{i \in G_k}\log{\sigma_i}
+    % + C
+\end{aligned}
+\end{equation}
+Updates for $\gamma_k$
+\begin{equation}
+\begin{aligned}
+    \log &\ \frac{\gamma_K}{1-\gamma_K} = 
+    \log \frac{\bar{w}}{1-\bar{w}}
+    + \frac{m_K}{2}  
+    + \langle y - 1/2, X_{G_K} \mu_{G_K} \rangle  
+    % + \langle 1,\log s(t) - t/2 \rangle
+    \\
+    &
+    + \frac{1}{2} \sum_{j \in G_K} \log \left( 2 \pi \sigma_j^2 \right)
+    + \log(C_K)
+    + m_K \log (\lambda)
+    - \Bigg\{ 
+    \lambda \left( \sum_{i \in G_K} \sigma_i^2 + \mu_i^2 \right)^{1/2}  
+    % - \frac{t^\top A_t t}{2}
+    \\
+    &
+    + \frac{1}{2} \left( 
+	\mu_{G_k}^\top X_{G_k}^\top A_t X_{G_k} \mu_{G_k} 
+	+ \sum_{i \in G_k} (X^\top A_t X)_{ii} \sigma_{i}^2 
+    \right)
+    + \sum_{j \neq k} \gamma_j \mu_{G_k}^\top X_{G_k}^\top A_t X_{G_j} \mu_{G_j} 
+\Bigg\}
+\end{aligned}
+\end{equation}
+ELBO given by combining the negation of \eqref{eq:jj_expectation_Q} and $\E_Q[ - \log dQ / d\Pi]$,
+\begin{equation}
+\begin{aligned}
+\L_Q(\D) =
+    &\
+    \frac{1}{2}
+    \left(
+	t^\top A_t t
+	- \sum_{i,j=1}^p (X^\top A_t X)_{ij} \E_Q [ \beta_i \beta_j ]
+    \right)
+    - \left(
+    \sum_{k = 1}^M 
+	\gamma_k \langle 1/2 - y,  X_{G_k} \mu_{G_k} \rangle 
+    \right) 
+    \\
+    &
+    - \langle 1, t/2 - \log s(t) \rangle
+    + \sum_{k=1}^M \bigg(  
+	\frac{\gamma_k}{2} \sum_{j \in G_k} \left( \log( 2 \pi \sigma_j^2) \right)
+	+ \gamma_k \log(C_k)
+	+ \frac{\gamma_k m_k}{2} 
+    \\
+    &
+	+ \gamma_k m_k \log (\lambda)
+	- \E_Q \left[ \I_{z_k =1} \lambda \| \beta_{G_k} \| \right]
+	- \gamma_k \log \frac{\gamma_k}{\bar{w}}
+	- (1-\gamma_k) \log \frac{1 - \gamma_k}{1 - \bar{w}} 
+    \bigg)
+\end{aligned}
+\end{equation}
+
+Updates for $t_i$ are found by maximizing the ELBO, and are given by
+\begin{equation}
+    t_i = \left( 
+	\sum_{k=1}^M \gamma_k \left[
+	    (\mu_{G_k}^\top x_{i, G_k})^2 + \sum_{j \in G_k} \sigma_{j}^2 x_{i, j}^2
+	\right]
+    \right)^{1/2}
+\end{equation}
+
+
+\newpage
+\subsection*{Poisson}
+
+Under the Poisson family $Y_i \overset{\text{iid}}{\sim} \text{Poisson} (\lambda)$, where $\lambda > 0$. The canonical link function is $f(x) = \exp(x)$, 
+\begin{equation}
+    \ell(\D; \beta) = \sum_{i=1}^n y_i x_i^\top \beta - \exp(x_i^\top \beta) - \log(y!)
+\end{equation}
+We are going to be using the full covariance matrix variational family. Taking the expectation under $Q'$ gives
+\begin{align}
+    \E_{Q'} \left[ \ell (\D; \beta) \right] 
+    =&\ \sum_{i=1}^n \E_{Q'} \left[ 
+	y_i x_i^\top \beta - \exp(x_i^\top \beta) - \log(y!)
+    \right]
+    \nonumber
+    \\
+    =&\
+    \sum_{i=1}^n 
+    \left( \sum_{k=1}^M \gamma_k y_i x_{i, G_k}^\top \mu_{G_k} \right)
+    +
+    M_{Q'}(x_i)
+    - 
+    \log(y!)
+\end{align}
+where
+\begin{equation}
+M_{Q'}(x_i)
+    =	
+    \prod_{k=1}^M \left(
+	\gamma_k \exp \left\{ 
+	    x_{i, G_k}^\top \mu_{G_k} + 
+	    \frac{1}{2} x_{i, G_k}^\top \Sigma_{G_k} x_{i, G_k}
+	\right\}
+	+ 
+	(1- \gamma_k) 
+    \right)
+\end{equation}
+
+
+\bibliography{refs.bib}
+
+\end{document}
+
