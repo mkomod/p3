@@ -1,4 +1,3 @@
-library(spsl)
 library(gsvb)
 library(sparseGAM)                      # install.packages("sparseGAM")
 
@@ -9,16 +8,16 @@ SIM <- read.env("SIM", 1)
 MET <- read.env("MET", 1:3)
 CORES <- read.env("CORES", 1)
 
-
 # ----------------------------------------
 # Simulation settings
 # ----------------------------------------
-n <- c(250, 250, 250, 250) [SIM]
-p <- c(1e3, 1e3, 1e3, 1e3) [SIM]
-g <- c(5,   5,   5,   5)   [SIM]
-s <- c(3,   3,   5,   5)   [SIM]
-bmax <- 1.0
+n <- c(250, 500, 1e3, 250, 500, 1e3) [SIM]
+p <- c(5e3, 5e3, 5e3, 5e3, 5e3, 5e3) [SIM]
+g <- c(  5,   5,   5,  10,  10,  10) [SIM]
+s <- c(  5,   5,   5,  10,  10,  10) [SIM]
+bmax <- 1.5
 runs <- 100
+
 
 dg <- list(
     # data generation process (dgp)
@@ -30,26 +29,29 @@ dg <- list(
     ),
     # settings for each process
     s=list(
-	list(model="poisson", corr=0),
-	list(model="poisson", corr=0.6),
-	list(model="poisson", corr=0.6, block_size=50),
-	list(model="poisson", dof=3, weight=0.9)
+	list(model="binomial", corr=1),
+	list(model="binomial", corr=0.6),
+	list(model="binomial", corr=0.6, block_size=50),
+	list(model="binomial", dof=3, weight=0.9)
     )
 )
 
 m <- list(
     # methods
     m=c(
-	m_gsvb,  # GSVB (ours) 
-	m_spsl,  # SpSL (mcmc)
+	m_gsvb,  # GSVB (ours, jensens) 
+	m_gsvb,  # GSVB (ours, jaakkola)
+	m_gsvb,  # GSVB (ours, jaakola non diag)
 	m_ssgl   # SSGL (SpSL Group LASSO)
     ),
     p=list(
-	list(family="poisson", lambda=1, a0=1, b0=p/g, diag_covariance=TRUE, 
-	     intercept=FALSE),
-	list(family="poisson", lambda=1, a0=1, b0=p/g, mcmc_samples=10e3,
-	     intercept=FALSE),
-	list(family="poisson", l0=100, l1=1, a0=1, b0=p/g)
+	list(family="binomial-jensens",  lambda=1, a0=1, b0=p/g,
+	     diag_covariance=TRUE, intercept=TRUE),
+	list(family="binomial-jaakkola", lambda=1, a0=1, b0=p/g,
+	     diag_covariance=TRUE, intercept=TRUE),
+	list(family="binomial-jaakkola", lambda=1, a0=1, b0=p/g,
+	     diag_covariance=FALSE, intercept=TRUE),
+	list(family="binomial", l0=100, l1=1, a0=1, b0=p/g)
     )
 )
 
@@ -65,7 +67,8 @@ for (i in DGP)
     for (j in MET) {
 	rname <- sprintf("%d_%d_%d", i, SIM, j)
 	assign(rname, m_run(m$m[[j]], m$p[[j]], setting_parameters, CORES))
-	save(list=c(rname), file=sprintf("../../rdata/simulations/poisson/%s.RData", rname))
+	save(list=c(rname), 
+	     file=sprintf("../../rdata/simulations/binomial/comp/%s.RData", rname))
     }
 }
 

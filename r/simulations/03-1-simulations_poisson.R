@@ -1,4 +1,3 @@
-library(spsl)
 library(gsvb)
 library(sparseGAM)                      # install.packages("sparseGAM")
 
@@ -9,14 +8,13 @@ SIM <- read.env("SIM", 1)
 MET <- read.env("MET", 1:3)
 CORES <- read.env("CORES", 1)
 
-
 # ----------------------------------------
 # Simulation settings
 # ----------------------------------------
-n <- c(250, 250, 250, 250) [SIM]
-p <- c(1e3, 1e3, 1e3, 1e3) [SIM]
-g <- c(5,   5,   5,   5)   [SIM]
-s <- c(3,   3,   5,   5)   [SIM]
+n <- c(250, 500, 1e3, 250, 500, 1e3) [SIM]
+p <- c(5e3, 5e3, 5e3, 5e3, 5e3, 5e3) [SIM]
+g <- c(  5,   5,   5,  10,  10,  10) [SIM]
+s <- c(  3,   3,   3,   5,   5,   5) [SIM]
 bmax <- 1.0
 runs <- 100
 
@@ -41,13 +39,13 @@ m <- list(
     # methods
     m=c(
 	m_gsvb,  # GSVB (ours) 
-	m_spsl,  # SpSL (mcmc)
+	m_gsvb,  # GSVB (ours) 
 	m_ssgl   # SSGL (SpSL Group LASSO)
     ),
     p=list(
 	list(family="poisson", lambda=1, a0=1, b0=p/g, diag_covariance=TRUE, 
 	     intercept=FALSE),
-	list(family="poisson", lambda=1, a0=1, b0=p/g, mcmc_samples=10e3,
+	list(family="poisson", lambda=1, a0=1, b0=p/g, diag_covariance=FALSE, 
 	     intercept=FALSE),
 	list(family="poisson", l0=100, l1=1, a0=1, b0=p/g)
     )
@@ -65,7 +63,8 @@ for (i in DGP)
     for (j in MET) {
 	rname <- sprintf("%d_%d_%d", i, SIM, j)
 	assign(rname, m_run(m$m[[j]], m$p[[j]], setting_parameters, CORES))
-	save(list=c(rname), file=sprintf("../../rdata/simulations/poisson/%s.RData", rname))
+	save(list=c(rname), 
+	     file=sprintf("../../rdata/simulations/poisson/comp/%s.RData", rname))
     }
 }
 

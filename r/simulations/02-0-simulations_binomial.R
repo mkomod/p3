@@ -44,8 +44,7 @@ m <- list(
 	m_gsvb,  # GSVB (ours, jensens) 
 	m_gsvb,  # GSVB (ours, jaakkola)
 	m_gsvb,  # GSVB (ours, jaakola non diag)
-	m_spsl,  # SpSL (mcmc)
-	m_ssgl   # SSGL (SpSL Group LASSO)
+	m_spsl  # SpSL (mcmc)
     ),
     p=list(
 	list(family="binomial-jensens",  lambda=1, a0=1, b0=p/g,
@@ -55,8 +54,7 @@ m <- list(
 	list(family="binomial-jaakkola", lambda=1, a0=1, b0=p/g,
 	     diag_covariance=FALSE, intercept=TRUE),
 	list(family="binomial", lambda=1, a0=1, b0=p/g, 
-	     mcmc_samples=10e3, intercept=TRUE),
-	list(family="binomial", l0=100, l1=1, a0=1, b0=p/g)
+	     mcmc_samples=1e5, burnin=5e4, intercept=TRUE)
     )
 )
 
@@ -72,8 +70,8 @@ for (i in DGP)
     for (j in MET) {
 	rname <- sprintf("%d_%d_%d", i, SIM, j)
 	assign(rname, m_run(m$m[[j]], m$p[[j]], setting_parameters, CORES))
-	save(list=c(rname), file=sprintf("../../rdata/simulations/binomial/mcmc/%s.RData", rname))
-	# save(list=c(rname), file=sprintf("../../rdata/simulations/binomial/comp/%s.RData", rname))
+	save(list=c(rname), 
+	     file=sprintf("../../rdata/simulations/binomial/mcmc/%s.RData", rname))
     }
 }
 
