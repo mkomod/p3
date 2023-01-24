@@ -23,6 +23,8 @@ plot(f$g)
 plot(f$s)
 
 
+f <- sparseGAM::SSGL(y, X, X, groups, family="poisson", lambda0=100, lambda1=1, a=1, b=100)
+
 # ----------------------------------------
 # algorithm
 # ----------------------------------------
