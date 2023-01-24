@@ -41,13 +41,13 @@ m <- list(
     # methods
     m=c(
 	m_gsvb,  # GSVB (ours) 
-	m_spsl,  # SpSL (mcmc)
+	m_gsvb,  # GSVB (ours) 
 	m_ssgl   # SSGL (SpSL Group LASSO)
     ),
     p=list(
 	list(family="poisson", lambda=1, a0=1, b0=p/g, diag_covariance=TRUE, 
 	     intercept=FALSE),
-	list(family="poisson", lambda=1, a0=1, b0=p/g, mcmc_samples=10e3,
+	list(family="poisson", lambda=1, a0=1, b0=p/g, diag_covariance=FALSE, 
 	     intercept=FALSE),
 	list(family="poisson", l0=100, l1=1, a0=1, b0=p/g)
     )

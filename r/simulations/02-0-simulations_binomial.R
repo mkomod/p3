@@ -6,7 +6,7 @@ source("00-functions.R")
 
 DGP <- read.env("DGP", 1:4)
 SIM <- read.env("SIM", 1)
-MET <- read.env("MET", 1:3)
+MET <- read.env("MET", 1:4)
 CORES <- read.env("CORES", 1)
 
 if (SIM > 4 && 3 %in% MET) MET <- MET[-which(MET == 3)]
