@@ -1,23 +1,125 @@
 # Misc code for debugging
 source("./00-functions.R")
 
-d <- dgp_diag(250, 1000, 10, 10, list(model="gaussian", corr=0))
-d <- dgp_diag(250, 1000, 10, 10, list(model="gaussian", corr=0))
-d <- dgp_diag(300, 1000, 5, 3, list(model="binomial", corr=0))
-d <- dgp_diag(250, 1000, 5, 3, list(model="poisson", corr=0))
+# ----------------------------------------
+# SpSL MCMC
+# ----------------------------------------
+d <- dgp_wishart(200, 1000, 10, 10, 1.5, list(model="gaussian", corr=3, weight=0.9), seed=2)
+m_par <- list(family="gaussian", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, 
+	      b_t=1e-3, mcmc_samples=1e5, burnin=5e4, intercept=TRUE)
+f <- m_spsl(d, m_par)
 
-plot(d$y)
+length(unique(d$groups))
 
-m_par <- list(family="gaussian", lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3, diag_covariance=TRUE)
-m_par <- list(family="binomial-jensens", lambda=1, a0=1, b0=200, diag_covariance=FALSE)
-m_par <- list(family="binomial-jaakkola", lambda=1, a0=1, b0=200, diag_covariance=FALSE)
-m_par <- list(family="binomial-jaakkola", lambda=1, a0=1, b0=200, diag_covariance=TRUE)
-m_par <- list(family="binomial-refined", lambda=1, a0=1, b0=200, diag_covariance=FALSE)
-m_par <- list(family="poisson", lambda=1, a0=1, b0=200, diag_covariance=FALSE)
+f <- spsl::spsl.fit(d$y, d$X, d$groups, mcmc_samples=1e4, burnin=5e3, a_0 = 1, b_0=200)
+
+f0 <- gsvb::gsvb.fit(d$y, d$X, d$groups, diag_covariance=FALSE, niter=500)
+plot(f0$beta_hat)
+points(c(0, d$b), pch=20)
+plot(f0$g)
+
+
+plot(f$beta_hat)
+points(d$b, pch=20)
+d$active
+plot(f$Z[35, ])
+plot(f$Z[40, ])
+plot(f$Z[2, ])
+points(c(0, d$b), pch=20)
+plot(c(0, d$b), pch=20)
+plot(f$g)
+
+w <- rbeta(1, 190, 200)
+z <- f$Z[ , 5000][-1]
+z.old <- z[d$groups]
+z <- z.old
+b <- f$B[ , 5000][-1]
+
+
+vals <- c()
+for (i in 1:100)
+{
+    G <- which(d$groups == i)
+
+    z[G] <- 0
+    lp0 = sum(dnorm(d$y, d$X[ , which(!!z)] %*% d$b[which(!!z)], 1, log=T)) + dbeta(1-w, 1, 200, T)
+
+    z[G] <- 1
+    lp1 = sum(dnorm(d$y, d$X[ , which(!!z)] %*% d$b[which(!!z)], 1, log=T)) + dbeta(1-w, 1, 200, T)
+    
+    z[G] <- z.old[G]
+    vals <- c(vals, print(1/(1+exp(lp0 - lp1))))
+}
+vals[d$active]
+
+
+dnorm(y, X %*% f$b, 1, log=T)
+
+
+matplot(t(f$B[which(!!d$b)[1:10], ]), type="l")
+matplot(t(f$Z[which(!!d$b)[1:10], ]), type="l")
+matplot(t(f$B[which(!!d$b)[1:10], ]), type="l")
+matplot(t(f$B[which(!!d$b)[11:20], ]), type="l")
+matplot(t(f$B[which(!!d$b)[12:20], ]), type="l")
+plot(f$B[which(!!d$b)[1], ], type="l")
+plot(f$B[which(!!d$b)[2], ], type="l")
+plot(f$B[which(!!d$b)[1], ], type="l")
+plot(f$B[which(!!d$b)[1], ], type="l")
+plot(f$B[which(!!d$b)[1], ], type="l")
+plot(f$B[which(!!d$b)[21], ], type="l")
+plot(f$B[which(!!d$b)[22], ], type="l")
+plot(f$B[which(!!d$b)[23], ], type="l")
+plot(f$B[which(!!d$b)[24], ], type="l")
+
+
+newdata <- d$test$X
+newdata <- cbind(1, newdata)
+
+# mu <- sapply(1:4500, function(i) 
+# {
+#     grp <- (!!f$Z[ , i])[f$parameters$groups]
+#     if (any(grp)) {
+# 	if (sum(grp) == 1) {
+# 	    xb <- newdata[ , grp] * f$B[grp, i] 
+# 	} else {
+# 	    xb <- newdata[ , grp] %*% f$B[grp, i]
+# 	}
+#     } else {
+# 	xb <- rep(0, nrow(newdata))
+#     }
+#     return(xb)
+# })
+
+
+plot(d$test$y)
+points(pred$mean, pch=20)
+points(pred$quantiles[1, ])
+points(pred$quantiles[2, ])
+
+pred <- spsl::spsl.predict(f, newdata=d$test$X)
+
+# ----------------------------------------
+# Bimom settings
+# ----------------------------------------
+d <- dgp_diag(350, 1000, 5, 3, 1.5, list(model="binomial", corr=0))
+d <- dgp_wishart(350, 1000, 5, 3, 1.5, list(model="binomial", dof=3, weight=0.9))
+m_par <- list(family="binomial-jensens", lambda=1, a0=1, b0=200, diag_covariance=FALSE, intercept=TRUE)
+m_par <- list(family="binomial-jaakkola", lambda=1, a0=1, b0=200, diag_covariance=TRUE, intercept=TRUE)
+m_par <- list(family="binomial-jaakkola", lambda=1, a0=1, b0=200, diag_covariance=FALSE, intercept=TRUE)
 
 f <- m_gsvb(d, m_par)
-f <- m_spsl(d)
-f <- m_ssgl(d)
+
+
+# ----------------------------------------
+# Pois settings
+# ----------------------------------------
+d <- dgp_diag(300, 1000, 5, 3, list(model="poisson", corr=0))
+d <- dgp_wishart(350, 1000, 5, 3, list(model="poisson", dof=3, weight=0.9))
+
+m_par <- list(family="poisson", lambda=1, a0=1, b0=200, diag_covariance=FALSE, intercept=FALSE)
+f <- m_gsvb(d, m_par)
+
+
 
 # ----------------------------------------
 # m_run
@@ -223,4 +325,17 @@ method_coverage(d, f, "gsvb")
 
 s <- spsl::spsl.fit(d$y, d$X, d$groups)
 method_coverage(d, s, "spsl")
+
+
+# ----------------------------------------
+# testing mcmc
+# ----------------------------------------
+f <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", intercept=T, mcmc_samples=10e4, burnin = 5e4)
+
+d <- dgp_diag(200, 1000, 10, 10, 1.5, list(model="gaussian", corr=0), seed=1)
+mean(d$b[!!d$b])
+
+layout(1)
+matplot(t(f$B[c(FALSE, !!d$b), ]), type="l")
+
 
