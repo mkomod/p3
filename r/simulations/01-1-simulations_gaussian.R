@@ -44,10 +44,10 @@ m <- list(
 	m_ssgl   # SSGL (SpSL Group LASSO)
     ),
     p=list(
-	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, diag_covariance=TRUE, 
-	     intercept=TRUE),
-	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, diag_covariance=FALSE,
-	     intercept=TRUE),
+	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, 
+	     diag_covariance=TRUE, intercept=TRUE),
+	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, 
+	     diag_covariance=FALSE, intercept=TRUE),
 	list(family="gaussian", l0=100, l1=1, a0=1, b0=p/g)
     )
 )
@@ -64,7 +64,8 @@ for (i in DGP)
     for (j in MET) {
 	rname <- sprintf("%d_%d_%d", i, SIM, j)
 	assign(rname, m_run(m$m[[j]], m$p[[j]], setting_parameters, CORES))
-	save(list=c(rname), file=sprintf("../../rdata/simulations/gaussian/comp/%s.RData", rname))
+	save(list=c(rname), 
+	     file=sprintf("../../rdata/simulations/gaussian/comp/%s.RData", rname))
     }
 }
 
