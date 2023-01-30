@@ -1,6 +1,5 @@
 library(spsl)
 library(gsvb)
-library(sparseGAM)                      # install.packages("sparseGAM")
 
 source("00-functions.R")
 
@@ -9,7 +8,6 @@ SIM <- read.env("SIM", 1)
 MET <- read.env("MET", 1:4)
 CORES <- read.env("CORES", 1)
 
-if (SIM > 4 && 3 %in% MET) MET <- MET[-which(MET == 3)]
 
 # ----------------------------------------
 # Simulation settings
@@ -44,7 +42,7 @@ m <- list(
 	m_gsvb,  # GSVB (ours, jensens) 
 	m_gsvb,  # GSVB (ours, jaakkola)
 	m_gsvb,  # GSVB (ours, jaakola non diag)
-	m_spsl  # SpSL (mcmc)
+	m_spsl   # SpSL (mcmc)
     ),
     p=list(
 	list(family="binomial-jensens",  lambda=1, a0=1, b0=p/g,
