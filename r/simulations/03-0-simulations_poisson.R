@@ -1,6 +1,5 @@
 library(spsl)
 library(gsvb)
-library(sparseGAM)                      # install.packages("sparseGAM")
 
 source("00-functions.R")
 
@@ -13,7 +12,7 @@ CORES <- read.env("CORES", 1)
 # ----------------------------------------
 # Simulation settings
 # ----------------------------------------
-n <- c(250, 250, 250, 250) [SIM]
+n <- c(350, 350, 350, 350) [SIM]
 p <- c(1e3, 1e3, 1e3, 1e3) [SIM]
 g <- c(5,   5,   5,   5)   [SIM]
 s <- c(3,   3,   5,   5)   [SIM]
@@ -42,16 +41,19 @@ m <- list(
     m=c(
 	m_gsvb,  # GSVB (ours) 
 	m_gsvb,  # GSVB (ours) 
-	m_ssgl   # SSGL (SpSL Group LASSO)
+	m_spsl   # SpSL (mcmc)
     ),
     p=list(
 	list(family="poisson", lambda=1, a0=1, b0=p/g, diag_covariance=TRUE, 
 	     intercept=FALSE),
 	list(family="poisson", lambda=1, a0=1, b0=p/g, diag_covariance=FALSE, 
 	     intercept=FALSE),
-	list(family="poisson", l0=100, l1=1, a0=1, b0=p/g)
+	list(family="poisson", lambda=1, a0=1, b0=p/g, 
+	     mcmc_samples=1e5, burnin=5e4, intercept=FALSE)
     )
 )
+
+
 
 
 # ----------------------------------------
@@ -65,7 +67,7 @@ for (i in DGP)
     for (j in MET) {
 	rname <- sprintf("%d_%d_%d", i, SIM, j)
 	assign(rname, m_run(m$m[[j]], m$p[[j]], setting_parameters, CORES))
-	save(list=c(rname), file=sprintf("../../rdata/simulations/poisson/%s.RData", rname))
+	save(list=c(rname), file=sprintf("../../rdata/simulations/poisson/mcmc/%s.RData", rname))
     }
 }
 
