@@ -5,7 +5,8 @@ source("00-functions.R")
 
 DGP <- read.env("DGP", 1:4)
 SIM <- read.env("SIM", 1)
-MET <- read.env("MET", 1:4)
+# MET <- read.env("MET", 1:4)
+MET <- read.env("MET", 4)
 CORES <- read.env("CORES", 1)
 
 # ----------------------------------------
@@ -51,7 +52,7 @@ m <- list(
 	     diag_covariance=TRUE, intercept=TRUE),
 	list(family="binomial-jaakkola", lambda=1, a0=1, b0=p/g,
 	     diag_covariance=FALSE, intercept=TRUE),
-	list(family="binomial", l0=100, l1=1, a0=1, b0=p/g)
+	list(family="binomial", l0=20, l1=1, a0=1, b0=p/g)
     )
 )
 
