@@ -5,29 +5,27 @@ source("./00-functions.R")
 # SpSL MCMC
 # ----------------------------------------
 d <- dgp_wishart(200, 1000, 10, 10, 1.5, list(model="gaussian", corr=3, weight=0.9), seed=2)
-m_par <- list(family="gaussian", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, 
-	      b_t=1e-3, mcmc_samples=1e5, burnin=5e4, intercept=TRUE)
-f <- m_spsl(d, m_par)
 
-length(unique(d$groups))
-
-f <- spsl::spsl.fit(d$y, d$X, d$groups, mcmc_samples=1e4, burnin=5e3, a_0 = 1, b_0=200)
-
-f0 <- gsvb::gsvb.fit(d$y, d$X, d$groups, diag_covariance=FALSE, niter=500)
-plot(f0$beta_hat)
-points(c(0, d$b), pch=20)
-plot(f0$g)
-
+f <- spsl::spsl.fit(d$y, d$X, d$groups, mcmc_samples=5e4, burnin=3e4, a_0 = 1, b_0=200)
 
 plot(f$beta_hat)
 points(d$b, pch=20)
-d$active
 plot(f$Z[35, ])
 plot(f$Z[40, ])
 plot(f$Z[2, ])
 points(c(0, d$b), pch=20)
 plot(c(0, d$b), pch=20)
 plot(f$g)
+
+f0 <- gsvb::gsvb.fit(d$y, d$X, d$groups, diag_covariance=FALSE, niter=500)
+plot(f0$beta_hat)
+points(c(0, d$b), pch=20)
+plot(f0$g)
+
+# m_par <- list(family="gaussian", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, 
+# 	      b_t=1e-3, mcmc_samples=1e5, burnin=5e4, intercept=TRUE)
+# f <- m_spsl(d, m_par)
+# length(unique(d$groups))
 
 w <- rbeta(1, 190, 200)
 z <- f$Z[ , 5000][-1]
@@ -109,16 +107,51 @@ m_par <- list(family="binomial-jaakkola", lambda=1, a0=1, b0=200, diag_covarianc
 
 f <- m_gsvb(d, m_par)
 
+d <- dgp_wishart(500, 5000, 10, 10, 1.5, list(model="binomial", dof=3, weight=0.9))
+m_par <- list(family="binomial", l0=100, l1=1, a0=1, b0=5000/5)
+m_par <- list(family="binomial", l0=20, l1=1, a0=1, b0=5000/5)
+f <- m_ssgl(d, m_par)
+
+d <- dgp_wishart(350, 1000, 5, 5, 1.5, list(model="binomial", dof=3, weight=0.9))
+m_par <- list(family="binomial", lambda=1, a0=1, b0=200, mcmc_samples=1e5, burnin=5e4, intercept=TRUE)
+
+
+f <- m_spsl(d, m_par)
+
+d <- dgp_diag(350, 1000, 5, 5, 1.5, list(model="binomial", corr=0))
+d <- dgp_wishart(350, 1000, 5, 5, 1.5, list(model="binomial", dof=3, weight=0.9))
+f <- spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", 
+		    mcmc_samples=1e4, burnin=5e3)
+plot(f$beta)
+matplot(t(f$B[ c(F, !!d$b), ]), type="l")
+points(d$b, pch=20)
+
+d <- dgp_diag(500, 5000, 5, 5, 1.5, list(model="binomial", corr=0))
+f <- gsvb::gsvb.fit(d$y, d$X, d$groups, family="binomial-jaakkola")
+plot(f$beta)
+points(d$b, pch=20)
+
 
 # ----------------------------------------
 # Pois settings
 # ----------------------------------------
 d <- dgp_diag(300, 1000, 5, 3, list(model="poisson", corr=0))
-d <- dgp_wishart(350, 1000, 5, 3, list(model="poisson", dof=3, weight=0.9))
 
-m_par <- list(family="poisson", lambda=1, a0=1, b0=200, diag_covariance=FALSE, intercept=FALSE)
+d <- dgp_wishart(350, 1000, 5, 3, 1.0, list(model="poisson", dof=3, weight=0.9))
+m_par <- list(family="poisson", lambda=1, a0=1, b0=200, diag_covariance=TRUE, intercept=FALSE)
 f <- m_gsvb(d, m_par)
 
+f <- gsvb::gsvb.fit(d$y, d$X, d$groups, family="poisson", intercept=FALSE, diag_covariance=TRUE)
+f <- gsvb::gsvb.fit(d$y, d$X, d$groups, family="poisson", intercept=FALSE, diag_covariance=FALSE,
+		    s=rep(0.25, 1000), niter=35)
+
+plot(f$beta)
+points(d$b, pch=20)
+
+plot(d$b, pch=20)
+points(f$beta)
+plot(f$s^2)
+points(d$b, pch=20)
 
 
 # ----------------------------------------

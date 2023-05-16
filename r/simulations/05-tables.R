@@ -37,7 +37,7 @@ for (d in 1:4) { # data generating process
 	    if (s > 4 && m == 3)
 		next
 
-	    load(file=sprintf("../../rdata/simulations/01/c_%d_%d_%d.RData", d, s, m))
+	    load(file=sprintf("../../rdata/simulations/gaussian/c_%d_%d_%d.RData", d, s, m))
 	    x <- get(sprintf("c_%d_%d_%d", d, s, m))
 	    if (any(m == 1:3)) colnames(x) <- dnames
 	    if (sum(is.na(x[ , 1])) == 100) {
