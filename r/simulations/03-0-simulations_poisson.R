@@ -16,7 +16,7 @@ n <- c(350, 350) [SIM]
 p <- c(1e3, 1e3) [SIM]
 g <- c(5,   5)   [SIM]
 s <- c(3,   5)   [SIM]
-bmax <- 1.0
+bmax <- 0.45
 runs <- 100
 
 dg <- list(
