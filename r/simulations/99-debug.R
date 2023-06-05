@@ -135,13 +135,21 @@ points(d$b, pch=20)
 # ----------------------------------------
 # Pois settings
 # ----------------------------------------
-d <- dgp_diag(300, 1000, 5, 3, list(model="poisson", corr=0))
+d <- dgp_diag(300, 1000, 5, 3, 1.0, list(model="poisson", corr=0))
+d <- dgp_wishart(500, 1000, 5, 10, 0.45, list(model="poisson", dof=3, weight=0.9), seed=5)
 
-d <- dgp_wishart(350, 1000, 5, 3, 1.0, list(model="poisson", dof=3, weight=0.9))
-m_par <- list(family="poisson", lambda=1, a0=1, b0=200, diag_covariance=TRUE, intercept=FALSE)
+m_par <- list(family="poisson", lambda=1, a0=1, b0=200, 
+	      diag_covariance=TRUE, intercept=FALSE)
+
 f <- m_gsvb(d, m_par)
+f
+f <- gsvb::gsvb.fit(d$y, d$X, d$groups, family="poisson", intercept=FALSE, 
+		    diag_covariance=TRUE, niter=250)
+dev.off()
+plot(f$b)
+points(d$b, pch=20)
 
-f <- gsvb::gsvb.fit(d$y, d$X, d$groups, family="poisson", intercept=FALSE, diag_covariance=TRUE)
+
 f <- gsvb::gsvb.fit(d$y, d$X, d$groups, family="poisson", intercept=FALSE, diag_covariance=FALSE,
 		    s=rep(0.25, 1000), niter=35)
 
