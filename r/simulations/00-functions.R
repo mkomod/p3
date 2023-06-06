@@ -212,33 +212,42 @@ m_gsvb <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100,
 m_spsl <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100, 
     a_t=1e-3, b_t=1e-3, mcmc_samples=10e3, burnin=5e3, intercept=TRUE))
 {
-    fit.time <- system.time({
-	fit <- spsl::spsl.fit(d$y, d$X, d$groups, family=m_par$family,
-	    intercept=m_par$intercept, lambda=m_par$lambda, a_0=m_par$a0, 
-	    b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
-	    mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin)
+    tryCatch({
+	fit.time <- system.time({
+	    fit <- spsl::spsl.fit(d$y, d$X, d$groups, family=m_par$family,
+		intercept=m_par$intercept, lambda=m_par$lambda, a_0=m_par$a0, 
+		b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
+		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin)
+	})
+
+	active_groups <- rep(0, length(unique(d$groups)))
+	active_groups[d$active_groups] <- 1
+
+	if (m_par$intercept) {
+	    res <- method_summary(d$b, active_groups, fit$beta_hat[-1], fit$g[-1], 0.5)
+	} else {
+	    res <- method_summary(d$b, active_groups, fit$beta_hat, fit$g, 0.5)
+	}
+
+	coverage.beta <- method_coverage(d, fit, "spsl", prob = 0.95)
+
+	if (!is.null(d$test)) {
+	    coverage.pp <- method_post_pred(d, fit, method="spsl", 
+		quantiles=c(0.025, 0.975), return_samples=FALSE)
+
+	    return(c(unlist(res), unlist(fit.time[3]), unlist(coverage.beta),
+		     unlist(coverage.pp)))
+	}
+
+	return(c(unlist(res), unlist(fit.time[3]), unlist(coverage.beta)))
+    }, error=function(e) 
+    {
+	cat("error in run: ", d$seed)
+	print(e)
+
+	if (!is.null(d$test)) return(rep(NA, 218))
+	return(rep(NA, 217))
     })
-
-    active_groups <- rep(0, length(unique(d$groups)))
-    active_groups[d$active_groups] <- 1
-
-    if (m_par$intercept) {
-	res <- method_summary(d$b, active_groups, fit$beta_hat[-1], fit$g[-1], 0.5)
-    } else {
-	res <- method_summary(d$b, active_groups, fit$beta_hat, fit$g, 0.5)
-    }
-
-    coverage.beta <- method_coverage(d, fit, "spsl", prob = 0.95)
-
-    if (!is.null(d$test)) {
-	coverage.pp <- method_post_pred(d, fit, method="spsl", 
-	    quantiles=c(0.025, 0.975), return_samples=FALSE)
-
-	return(c(unlist(res), unlist(fit.time[3]), unlist(coverage.beta),
-		 unlist(coverage.pp)))
-    }
-
-    return(c(unlist(res), unlist(fit.time[3]), unlist(coverage.beta)))
 }
 
 
