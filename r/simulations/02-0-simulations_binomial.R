@@ -16,8 +16,9 @@ n <- c(400, 400) [SIM]
 p <- c(1e3, 1e3) [SIM]
 g <- c(5,   5)  [SIM]
 s <- c(3,   5)  [SIM]
-bmax <- 1.5
+bmax <- 1.0
 runs <- 100
+
 
 dg <- list(
     # data generation process (dgp)

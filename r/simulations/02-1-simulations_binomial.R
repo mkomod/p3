@@ -5,9 +5,9 @@ source("00-functions.R")
 
 DGP <- read.env("DGP", 1:4)
 SIM <- read.env("SIM", 1)
-# MET <- read.env("MET", 1:4)
-# MET <- read.env("MET", 4)
-# CORES <- read.env("CORES", 1)
+MET <- read.env("MET", 1:4)
+CORES <- read.env("CORES", 1)
+
 
 # ----------------------------------------
 # Simulation settings
@@ -15,8 +15,8 @@ SIM <- read.env("SIM", 1)
 n <- c(250, 500, 1e3, 250, 500, 1e3) [SIM]
 p <- c(5e3, 5e3, 5e3, 5e3, 5e3, 5e3) [SIM]
 g <- c(  5,   5,   5,  10,  10,  10) [SIM]
-s <- c(  5,   5,   5,  10,  10,  10) [SIM]
-bmax <- 1.5
+s <- c(  3,   3,   3,   5,   5,   5) [SIM]
+bmax <- 1.0
 runs <- 100
 
 
