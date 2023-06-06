@@ -100,19 +100,28 @@ pred <- spsl::spsl.predict(f, newdata=d$test$X)
 # Bimom settings
 # ----------------------------------------
 d <- dgp_diag(350, 1000, 5, 3, 1.5, list(model="binomial", corr=0))
-d <- dgp_wishart(350, 1000, 5, 3, 1.5, list(model="binomial", dof=3, weight=0.9))
+d <- dgp_wishart(350, 1000, 5, 3, 0.8, list(model="binomial", dof=3, weight=0.9))
 m_par <- list(family="binomial-jensens", lambda=1, a0=1, b0=200, diag_covariance=FALSE, intercept=TRUE)
 m_par <- list(family="binomial-jaakkola", lambda=1, a0=1, b0=200, diag_covariance=TRUE, intercept=TRUE)
 m_par <- list(family="binomial-jaakkola", lambda=1, a0=1, b0=200, diag_covariance=FALSE, intercept=TRUE)
 
+
+
+d <- dgp_wishart(400, 1000, 5, 3, 0.8, list(model="binomial", dof=3, weight=0.9))
+f <- spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", 
+		    mcmc_samples=1e4, burnin=5e3)
+
+
 f <- m_gsvb(d, m_par)
 
-d <- dgp_wishart(500, 5000, 10, 10, 1.5, list(model="binomial", dof=3, weight=0.9))
+d <- dgp_wishart(500, 5000, 10, 10, 0.8, list(model="binomial", dof=3, weight=0.9))
 m_par <- list(family="binomial", l0=100, l1=1, a0=1, b0=5000/5)
 m_par <- list(family="binomial", l0=20, l1=1, a0=1, b0=5000/5)
 f <- m_ssgl(d, m_par)
 
 d <- dgp_wishart(350, 1000, 5, 5, 1.5, list(model="binomial", dof=3, weight=0.9))
+
+
 m_par <- list(family="binomial", lambda=1, a0=1, b0=200, mcmc_samples=1e5, burnin=5e4, intercept=TRUE)
 
 
@@ -126,8 +135,17 @@ plot(f$beta)
 matplot(t(f$B[ c(F, !!d$b), ]), type="l")
 points(d$b, pch=20)
 
-d <- dgp_diag(500, 5000, 5, 5, 1.5, list(model="binomial", corr=0))
+d <- dgp_diag(500, 5000, 5, 5, 0.8, list(model="binomial", corr=0))
+
+
+
+
+d <- dgp_diag(500, 2500, 5, 3, 1.0, list(model="binomial", corr=0))
+d <- dgp_diag(500, 5000, 5, 3, 1.0, list(model="binomial", corr=0))
+d <- dgp_wishart(500, 2500, 5, 3, 1.0, list(model="binomial", dof=3, weight=0.9))
+
 f <- gsvb::gsvb.fit(d$y, d$X, d$groups, family="binomial-jaakkola")
+
 plot(f$beta)
 points(d$b, pch=20)
 
