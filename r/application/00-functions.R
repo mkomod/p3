@@ -42,3 +42,16 @@ nzero.groups = function(beta, groups)
 {
     sapply(unique(groups), function(g) any(beta[groups == g] != 0))
 }
+
+
+cat.res = function(true, pred, beta, groups)
+{
+    res = ROSE::accuracy.meas(true, pred)
+    auc = ROSE::roc.curve(true, pred, plotit=F)
+    msize = sum(nzero.groups(beta, groups))
+
+    cat(sprintf("%.3f & %.3f & %.3f & %.3f & %d \\\\\n",
+	res$precision, res$recall, res$F, auc$auc, msize))
+
+    invisible()
+}
