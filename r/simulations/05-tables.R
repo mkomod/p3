@@ -277,6 +277,7 @@ dat <- get_data("binomial/mcmc",
 		dgp=2:4, 
 		simnum=1:2,
 		make.table=FALSE,
+		fname="../figs/binom_mcmc_1.pdf",
 		method.names=c("GSVB-D-J", "GSVB-B", "GSVB-D", "MCMC"),
 		method.cols=adjustcolor(color_palette[c(1,2,3,5)], 0.5),
 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
@@ -319,11 +320,16 @@ dat <- get_data("poisson/mcmc",
 		1:3, 
 		n, p, g, s,
 		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), 
-		dgp=2:4, 
+		dgp=1:4, 
 		simnum=1:2,
+		fname="../figs/pois_mcmc_1.pdf",
 		method.names=c("GSVB-D", "GSVB-D", "MCMC"),
 		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
 		    latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"),
 		    latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")))
 
+
+
+cols = adjustcolor(colorRampPalette(c("white", "darkgreen"))(4)[1:4], 0.15)
+color_palette = adjustcolor(c("darkorchid", "#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00"), 0.5)

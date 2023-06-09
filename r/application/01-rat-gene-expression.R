@@ -4,6 +4,8 @@
 # 	ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE5nnn/GSE5680/matrix/
 #
 # -------------------------------------------------------------------------------
+rm(list=ls())
+set.seed(1)
 
 library(AnnotationDbi) 		# BiocManager::install("AnnotationDbi")
 library(rat2302.db) 		# BiocManager::install("rat2302.db")
@@ -11,13 +13,7 @@ library(splines)
 library(data.table)
 library(SSGL)
 
-
-rm(list=ls())
-set.seed(1)
-
 source("./00-functions.R")
-
-
 # -------------------------------------------------------------------------------
 # 				Data prep
 # -------------------------------------------------------------------------------
@@ -110,17 +106,23 @@ which.min(modSSGLcv$CVerror)
 # 				X-validate
 # -------------------------------------------------------------------------------
 # mod.gsvb = list()
+mod.gsvb.d = list()
 # mod.ssgl = list()
-# load("../../rdata/application/rat/cv_results.RData")
+load("../../rdata/application/rat/cv_results.RData")
 
-cv.error = matrix(0, nrow=2, ncol=10)
-mod.size = matrix(0, nrow=2, ncol=10) 
-pp.coverage = matrix(0, nrow=1, ncol=10)
+cv.error = matrix(0, nrow=3, ncol=10)
+mod.size = matrix(0, nrow=3, ncol=10) 
+pp.coverage = matrix(0, nrow=2, ncol=10)
 
 for (fold in 1:10) 
 {
     tt = cv(nrow(X), fold, folds=10)
     tr = tt$train
+
+    # f.gsvb.d = gsvb::gsvb.fit(y[tr], Z[tr, ], groups,
+			# intercept=FALSE, diag_covariance=TRUE, 
+			# track_elbo=FALSE)
+    # mod.gsvb.d[[fold]] = f.gsvb.d
 
     # f.gsvb = gsvb::gsvb.fit(y[tr], Z[tr, ], groups,
 			# intercept=FALSE, diag_covariance=FALSE, 
@@ -132,20 +134,28 @@ for (fold in 1:10)
 		   # theta = 0.5)
     # mod.ssgl[[fold]] = f.ssgl
 
+    f.gsvb.d = mod.gsvb.d[[fold]]
     f.gsvb = mod.gsvb[[fold]]
     f.ssgl = mod.ssgl[[fold]]
 
     
     ts = tt$test
-    cv.error[1, fold] = mean((y[ts] - Z[ts, ] %*% f.gsvb$beta_hat)^2)
-    cv.error[2, fold] = mean((y[ts] - f.ssgl$intercept - Z[ts, ] %*% f.ssgl$beta)^2)
+    cv.error[1, fold] = mean((y[ts] - Z[ts, ] %*% f.gsvb.d$beta_hat)^2)
+    cv.error[2, fold] = mean((y[ts] - Z[ts, ] %*% f.gsvb$beta_hat)^2)
+    cv.error[3, fold] = mean((y[ts] - f.ssgl$intercept - Z[ts, ] %*% f.ssgl$beta)^2)
 
-    mod.size[1, fold] = sum(f.gsvb$g > 0.5)
-    mod.size[2, fold] = sum(f.ssgl$beta != 0) / m
+    mod.size[1, fold] = sum(f.gsvb.d$g > 0.5)
+    mod.size[2, fold] = sum(f.gsvb$g > 0.5)
+    mod.size[3, fold] = sum(f.ssgl$beta != 0) / m
     
-    gsvb.pred = gsvb::gsvb.predict(f.gsvb, Z[ts, ])
+    gsvb.pred = gsvb::gsvb.predict(f.gsvb.d, Z[ts, ])
     pp.coverage[1, fold] = mean(y[ts] >= gsvb.pred$quantiles[1, ] & 
 				y[ts] <= gsvb.pred$quantiles[2, ])
+
+    gsvb.pred = gsvb::gsvb.predict(f.gsvb, Z[ts, ])
+    pp.coverage[2, fold] = mean(y[ts] >= gsvb.pred$quantiles[1, ] & 
+				y[ts] <= gsvb.pred$quantiles[2, ])
+
 }
 
 # save(list=c("mod.gsvb", "mod.ssgl", "cv.error", "mod.size"),
@@ -158,13 +168,13 @@ rowMeans(mod.size)
 apply(mod.size, 1, sd)
 
 rowMeans(pp.coverage)
-sd(pp.coverage)
+apply(pp.coverage, 1, sd)
 
 
 # -------------------------------------------------------------------------------
 # 				Tables
 # -------------------------------------------------------------------------------
-for (j in 1:2)
+for (j in 1:3)
     cat(sprintf("%.4f (%.3f) & %.2f (%.3f) \\\\ \n",
     mean(cv.error[j, ]), sd(cv.error[j, ]), 
     mean(mod.size[j, ]),sd(mod.size[j, ])))
