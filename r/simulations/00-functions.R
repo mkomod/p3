@@ -218,6 +218,21 @@ m_spsl <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100,
 		intercept=m_par$intercept, lambda=m_par$lambda, a_0=m_par$a0, 
 		b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
 		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin)
+
+	    f1 <- spsl::spsl.fit(d$y, d$X, d$groups, family=m_par$family,
+		intercept=m_par$intercept, lambda=m_par$lambda, a_0=m_par$a0, 
+		b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
+		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin)
+
+	    f2 <- spsl::spsl.fit(d$y, d$X, d$groups, family=m_par$family,
+		intercept=m_par$intercept, lambda=m_par$lambda, a_0=m_par$a0, 
+		b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
+		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin)
+
+	    f3 <- spsl::spsl.fit(d$y, d$X, d$groups, family=m_par$family,
+		intercept=m_par$intercept, lambda=m_par$lambda, a_0=m_par$a0, 
+		b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
+		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin)
 	})
 
 	active_groups <- rep(0, length(unique(d$groups)))
@@ -231,22 +246,35 @@ m_spsl <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100,
 
 	coverage.beta <- method_coverage(d, fit, "spsl", prob = 0.95)
 
+	l = coda::mcmc.list(
+		coda::mcmc(t(fit$B)),
+		coda::mcmc(t(f1$B)),
+		coda::mcmc(t(f2$B)),
+		coda::mcmc(t(f3$B))
+	    )
+
+	psrf = coda::gelman.diag(l)
+	max_psrf = max(psrf$psrf[ , 1])
+	mpsrf = psrf$mpsrf
+
+	ppsrf = list(max_psrf= max_psrf, mpsrf=mpsrf)
+
 	if (!is.null(d$test)) {
 	    coverage.pp <- method_post_pred(d, fit, method="spsl", 
 		quantiles=c(0.025, 0.975), return_samples=FALSE)
 
 	    return(c(unlist(res), unlist(fit.time[3]), unlist(coverage.beta),
-		     unlist(coverage.pp)))
+		     unlist(coverage.pp), unlist(ppsrf)))
 	}
 
-	return(c(unlist(res), unlist(fit.time[3]), unlist(coverage.beta)))
+	return(c(unlist(res), unlist(fit.time[3]), unlist(coverage.beta), unlist(ppsrf)))
     }, error=function(e) 
     {
 	cat("error in run: ", d$seed)
 	print(e)
 
-	if (!is.null(d$test)) return(rep(NA, 218))
-	return(rep(NA, 217))
+	if (!is.null(d$test)) return(rep(NA, 221))
+	return(rep(NA, 220))
     })
 }
 
