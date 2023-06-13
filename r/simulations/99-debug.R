@@ -22,9 +22,6 @@ plot(f0$beta_hat)
 points(c(0, d$b), pch=20)
 plot(f0$g)
 
-# m_par <- list(family="gaussian", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, 
-# 	      b_t=1e-3, mcmc_samples=1e5, burnin=5e4, intercept=TRUE)
-# f <- m_spsl(d, m_par)
 # length(unique(d$groups))
 
 w <- rbeta(1, 190, 200)
@@ -389,12 +386,59 @@ method_coverage(d, s, "spsl")
 # ----------------------------------------
 # testing mcmc
 # ----------------------------------------
-f <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", intercept=T, mcmc_samples=10e4, burnin = 5e4)
-
 d <- dgp_diag(200, 1000, 10, 10, 1.5, list(model="gaussian", corr=0), seed=1)
+d <- dgp_diag(200, 1000, 5, 5, 1.5, list(model="gaussian", corr=0), seed=1)
+
+f0 <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", intercept=T, 
+		    mcmc_samples=20e3, burnin = 10e3)
+f1 <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", intercept=T, 
+		    mcmc_samples=20e3, burnin = 10e3)
+f2 <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", intercept=T, 
+		    mcmc_samples=20e3, burnin = 10e3)
+f3 <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", intercept=T, 
+		    mcmc_samples=20e3, burnin = 10e3)
+
+l = coda::mcmc.list(
+	coda::mcmc(t(f0$B)),
+	coda::mcmc(t(f1$B)),
+	coda::mcmc(t(f2$B)),
+	coda::mcmc(t(f3$B))
+    )
+
+perf = coda::gelman.diag(l)
+plot(perf$psrf[ , 1])
+perf$mpsrf
+plot(f0$g)
+plot(f1$g)
+plot(f2$g)
+plot(f3$g)
+
+
+
+
+
+plot(coda::effectiveSize(l))
+
+plot(f0$g, ylim=c(0, 1))
+points(f1$g)
+points(f2$g)
+points(f3$g)
+
+
+install.packages("coda")
+
+coda::gelman.diag
+coda::mcmc.list
 mean(d$b[!!d$b])
 
 layout(1)
 matplot(t(f$B[c(FALSE, !!d$b), ]), type="l")
 
+
+
+d <- dgp_diag(200, 1000, 10, 10, 1.5, list(model="gaussian", corr=0), seed=1)
+d <- dgp_diag(200, 1000, 5, 5, 1.5, list(model="gaussian", corr=0), seed=1)
+m_par <- list(family="gaussian", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, 
+	      b_t=1e-3, mcmc_samples=2e3, burnin=5e2, intercept=TRUE)
+f <- m_spsl(d, m_par)
 
