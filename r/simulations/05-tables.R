@@ -20,13 +20,20 @@ proc_time <- function(e)
 get_data <- function(family, methods, n, p, g, s, metrics,
     dgp=1:4, simnums=1:length(n), make.table=FALSE, make.plot=TRUE,
     metric.title=metrics, method.names=NULL, method.cols=methods+1,
-    fname="") 
+    fname="", max_psrf=1.1) 
 {
     cnames <- list() 
     for (i in methods) {
-	load(file=sprintf("../../rdata/simulations/%s/%d_%d_%d.RData", 
-			  family, 1, 1, i))
-	dnames <- colnames(get(sprintf("1_1_%d", i)))
+	if (strsplit(family, "/")[[1]][1] == "binomial") {
+	    load(file=sprintf("../../rdata/simulations/%s/%d_%d_%d.RData", 
+			      family, 2, 1, i))
+	    dnames <- colnames(get(sprintf("2_1_%d", i)))
+	} else {
+	    load(file=sprintf("../../rdata/simulations/%s/%d_%d_%d.RData", 
+			      family, 1, 1, i))
+	    dnames <- colnames(get(sprintf("1_1_%d", i)))
+	}
+
 	if (is.null(dnames)) {
 	    cnames[[i]] <- cnames[[i-1]]
 	} else {
@@ -58,6 +65,12 @@ get_data <- function(family, methods, n, p, g, s, metrics,
 		    tobind[1, ] = 1
 		    colnames(tobind) = metrics[! (metrics %in% cnames[[meth]])]
 		    x = cbind(x, tobind)
+		}
+
+		if ("max_psrf" %in% colnames(x)) {
+		    tokeep = x[, "max_psrf"] <= max_psrf
+		    cat(dtype, " - ", sim, " : ", sum(!tokeep), "\n")
+		    x[!tokeep, metrics] = NA
 		}
 
 		tobind <- cbind(d=dtype, n=n[sim], p=p[sim], g=g[sim], 
@@ -100,7 +113,7 @@ get_data <- function(family, methods, n, p, g, s, metrics,
 	    for (met in metrics)
 	    {
 		par(family="Times")
-		if (sim == simnums[1]) {
+		if (sim == simnums[1] && !any(is.expression(metric.title)) && all(metric.title != "")) {
 		    par(mar=c(2, 2, 2.5, 2))
 		} else {
 		    par(mar=c(2, 2, 2, 2))
@@ -157,11 +170,18 @@ get_data <- function(family, methods, n, p, g, s, metrics,
 		    colMed=1, colMed2="white", pchMed=23, cex=1.5)
 
 		# add the axis
+		labs = rep(method.names, length(dgp))
+		# axis(1, at=1:(length(methods) * length(dgp)), 
+		#     labels=labs, tick=T, lwd=0, lwd.ticks=0.2, 
+		#     cex.axis=0.9)
 		axis(1, at=1:(length(methods) * length(dgp)), 
-		     labels=rep(method.names, length(dgp)), tick=T,
-		    lwd=0, lwd.ticks=0.2, cex.axis=0.8)
-		axis(2, at=pretty(rng), las=1, 
-		    lwd=0, lwd.ticks=0.2)
+		    labels=FALSE, tick=T, lwd=0, lwd.ticks=0.2, 
+		    cex.axis=0.9)
+		text(x=1:(length(methods) * length(dgp)),
+		     par("usr")[3] - sd(rng) * 0.04,
+		     labels = labs, srt = -40, 
+		     pos = 1, xpd = TRUE, cex=0.82)
+		axis(2, at=pretty(rng), las=1, lwd=0, lwd.ticks=0.2)
 
 		# add did not run cross
 		if (any(att[ , 3] > 90)) {
@@ -198,7 +218,7 @@ dat <- get_data("gaussian/comp",
 		n, p, g, s,
 		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), 
 		dgp=1:4, 
-		simnum=c(1,2,4,5), 
+		simnum=c(1,2,5,6), 
 		make.table=FALSE,
 		method.names=c("GSVB-D", "GSVB-B", "SSGL"),
 		method.cols=adjustcolor(color_palette[1:3], 0.5),
@@ -207,6 +227,36 @@ dat <- get_data("gaussian/comp",
 			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
 			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$"))
 )
+
+
+dat <- get_data("gaussian/comp", 
+		1:3, 
+		n, p, g, s,
+		metrics=c("l2", "auc"),
+		dgp=1:4, 
+		simnum=c(1,2,4,5), 
+		make.table=FALSE,
+		method.names=c("GSVB-D", "GSVB-B", "SSGL"),
+		method.cols=adjustcolor(color_palette[1:3], 0.5),
+		# fname="../figs/gaus_comp_1.pdf",
+		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC")
+)
+
+
+dat <- get_data("gaussian/comp", 
+		1:2, 
+		n, p, g, s,
+		metrics=c("coverage.non_zero", "length.non_zero"), 
+		dgp=1:4, 
+		simnum=c(1,2,4,5), 
+		make.table=TRUE,
+		method.names=c("GSVB-D", "GSVB-B"),
+		method.cols=adjustcolor(color_palette[1:2], 0.5),
+		# fname="../figs/gaus_comp_2.pdf",
+		metric.title=c(latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
+			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$"))
+)
+
 
 dat <- get_data("gaussian/comp", 
 		1:3, 
@@ -229,10 +279,11 @@ dat <- get_data("gaussian/mcmc",
 		1:3, 
 		n, p, g, s,
 		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
-		dgp=1:4, 
-		simnum=c(1,2), 
-		make.table=FALSE,
-		# fname="../figs/gaus_mcmc_1.pdf",
+		dgp=c(1, 2, 3, 4),
+		simnum=1:2, 
+		make.table=F,
+		fname="../figs/gaus_mcmc_1.pdf",
+		max_psrf=2.50,
 		method.names=c("GSVB-D", "GSVB-B", "MCMC"),
 		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
@@ -257,32 +308,66 @@ dat <- get_data("binomial/comp",
 		dgp=2:4, 
 		simnum=c(2,3,5,6),
 		# fname="../figs/binom_comp_1.pdf",
-		make.table=FALSE,
-		method.names=c("GSVB-D-J", "GSVB-D", "GSVB-B", "SSGL"),
+		make.table=TRUE,
+		method.names=c("GSVB-J", "GSVB-D", "GSVB-B", "SSGL"),
 		method.cols=adjustcolor(color_palette[1:4], 0.5),
 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
 			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
 			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")))
+
+
+dat <- get_data("binomial/comp", 
+		1:4, 
+		n, p, g, s,
+		metrics=c("l2", "auc"),
+		dgp=2:4, 
+		simnum=c(3, 6), 
+		make.table=FALSE,
+		method.names=c("GSVB-J", "GSVB-D", "GSVB-B", "SSGL"),
+		method.cols=adjustcolor(color_palette[1:4], 0.5),
+		# fname="../figs/binom_comp_1.pdf",
+		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC")
+)
+
+
+dat <- get_data("binomial/comp", 
+		1:3, 
+		n, p, g, s,
+		metrics=c("coverage.non_zero", "length.non_zero"), 
+		dgp=2:4, 
+		simnum=c(3, 6),
+		make.table=TRUE,
+		method.names=c("GSVB-J", "GSVB-D", "GSVB-B"),
+		method.cols=adjustcolor(color_palette[1:3], 0.5),
+		# fname="../figs/binom_comp_2.pdf",
+		metric.title=c(latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
+			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$"))
+)
+
+
 
 n <- c(400, 400)
 p <- c(1e3, 1e3)
 g <- c(5,   5)
 s <- c(3,   5)
 
-# TODO: RUN THIS SIMULATION ASAP!!!
+
 dat <- get_data("binomial/mcmc", 
 		1:4, 
 		n, p, g, s,
 		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
 		dgp=2:4, 
-		simnum=1:2,
+		simnum=2,
 		make.table=FALSE,
 		fname="../figs/binom_mcmc_1.pdf",
 		method.names=c("GSVB-D-J", "GSVB-B", "GSVB-D", "MCMC"),
 		method.cols=adjustcolor(color_palette[c(1,2,3,5)], 0.5),
-		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
-		    latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"),
-		    latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")))
+		max_psrf=1.80,
+		metric.title=c("", "", "")
+		# metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
+		#     latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"),
+		#     latex2exp::TeX("Lenght $\\beta_0 \\neq 0$"))
+)
 
 
 
@@ -297,19 +382,52 @@ s <- c(  3,   3,   3,   5,   5,   5)
 
 
 color_palette = c("#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00")
+# dat <- get_data("poisson/comp", 
+# 		1:3, 
+# 		n, p, g, s,
+# 		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), 
+# 		dgp=3:4, 
+# 		simnum=c(1,2,4,5),
+# 		make.table=FALSE,
+# 		# fname="../figs/pois_comp_1.pdf",
+# 		method.names=c("GSVB-D", "GSVB-D", "SSGL"),
+# 		method.cols=adjustcolor(color_palette[1:3], 0.5),
+# 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
+# 			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
+# 			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")))
+
+
 dat <- get_data("poisson/comp", 
 		1:3, 
 		n, p, g, s,
-		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), 
-		dgp=3:4, 
-		simnum=c(1,2,4,5),
+		metrics=c("l2", "auc"),
+		dgp=2:4, 
+		simnum=c(2, 5), 
 		make.table=FALSE,
-		# fname="../figs/pois_comp_1.pdf",
-		method.names=c("GSVB-D", "GSVB-D", "SSGL"),
+		method.names=c("GSVB-D", "GSVB-B", "SSGL"),
 		method.cols=adjustcolor(color_palette[1:3], 0.5),
-		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
-			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
-			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")))
+		# fname="../figs/pois_comp_1.pdf",
+		metric.title= c("", "")
+		# metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC")
+)
+
+
+dat <- get_data("poisson/comp", 
+		1:2, 
+		n, p, g, s,
+		metrics=c("coverage.non_zero", "length.non_zero"), 
+		dgp=2:4, 
+		simnum=c(2, 5),
+		make.table=TRUE,
+		method.names=c("GSVB-D", "GSVB-B"),
+		method.cols=adjustcolor(color_palette[1:2], 0.5),
+		# fname="../figs/pois_comp_2.pdf",
+		metric.title = c("", ""),
+		# metric.title=c(latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
+		# 	       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$"))
+)
+
+
 
 n <- c(350, 350)
 p <- c(1e3, 1e3)
@@ -321,14 +439,25 @@ dat <- get_data("poisson/mcmc",
 		n, p, g, s,
 		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), 
 		dgp=1:4, 
-		simnum=1:2,
-		fname="../figs/pois_mcmc_1.pdf",
+		simnum=1,
+		max_psrf=5.50,
+		# fname="../figs/pois_mcmc_1.pdf",
 		method.names=c("GSVB-D", "GSVB-D", "MCMC"),
 		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
-		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
-		    latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"),
-		    latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")))
+		metric.title=c("", "", "", ""),
+		# metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
+		#     latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"),
+		#     latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")),
+		# max_psrf=1.10
+)
 
+
+
+
+load(file=sprintf("../../rdata/simulations/%s/%d_%d_%d.RData", 
+		  "poisson/mcmc/", 1, 1, 3))
+dnames <- colnames(get(sprintf("1_1_%d", i)))
+x = get(sprintf("1_1_%d", 3))
 
 
 cols = adjustcolor(colorRampPalette(c("white", "darkgreen"))(4)[1:4], 0.15)

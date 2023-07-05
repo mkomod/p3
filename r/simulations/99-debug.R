@@ -389,14 +389,52 @@ method_coverage(d, s, "spsl")
 d <- dgp_diag(200, 1000, 10, 10, 1.5, list(model="gaussian", corr=0), seed=1)
 d <- dgp_diag(200, 1000, 5, 5, 1.5, list(model="gaussian", corr=0), seed=1)
 
+d <- dgp_diag(300, 500, 5, 5, 1.5, list(model="gaussian", corr=0), seed=1)
 f0 <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", intercept=T, 
-		    mcmc_samples=20e3, burnin = 10e3)
-f1 <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", intercept=T, 
-		    mcmc_samples=20e3, burnin = 10e3)
-f2 <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", intercept=T, 
-		    mcmc_samples=20e3, burnin = 10e3)
-f3 <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", intercept=T, 
-		    mcmc_samples=20e3, burnin = 10e3)
+		    mcmc_samples=20e3, burnin = 5e3, thin=1)
+
+matplot(t(f0$B[1:10, ]), type="l")
+plot(f0$g)
+plot(f0$beta_hat)
+points(d$b, pch=20)
+method_coverage(d, f0, "spsl", 0.95)
+
+
+mean(
+    d$b[!!d$b] >=
+    apply(f0$B[1 + which(d$b != 0), ], 1, quantile, prob=c(0.025, 0.975))[1, ] &
+    d$b[!!d$b] <=
+    apply(f0$B[1 + which(d$b != 0), ], 1, quantile, prob=c(0.025, 0.975))[2, ]
+)
+
+gsvb::gsvb.credible_intervals
+
+plot(d$b[!!d$b], pch=20)
+points(spsl::spsl.credible_intervals(f0, 0.99)[1 + which(d$b != 0) , 1])
+points(spsl::spsl.credible_intervals(f0, 0.99)[1 + which(d$b != 0) , 2])
+
+# f1 <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", intercept=T, 
+# 		    mcmc_samples=20e3, burnin = 10e3)
+# f2 <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", intercept=T, 
+# 		    mcmc_samples=20e3, burnin = 10e3)
+# f3 <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", intercept=T, 
+# 		    mcmc_samples=20e3, burnin = 10e3)
+
+spsl::spsl.credible_intervals
+method_coverage(d, f0, "spsl", 0.95)
+plot(d$b[!!d$b], pch=20)
+points(spsl::spsl.credible_intervals(f0, 0.99)[1 + which(d$b != 0) , 1])
+points(spsl::spsl.credible_intervals(f0, 0.99)[1 + which(d$b != 0) , 2])
+
+f1 = gsvb::gsvb.fit(d$y, d$X, d$groups, diag_covariance=FALSE)
+f1 = gsvb::gsvb.fit(d$y, d$X, d$groups, diag_covariance=TRUE)
+method_coverage(d, f1, "gsvb", prob=0.95)
+gsvb::gsvb.credible_intervals
+
+
+matplot(t(f0$B[f0$parameters$groups == 44, ]), type="l")
+d$b[45 * 5 + 1:5]
+points(d$b[d$groups == 43])
 
 l = coda::mcmc.list(
 	coda::mcmc(t(f0$B)),
