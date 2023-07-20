@@ -213,20 +213,20 @@ g <- c( 10,  10,  10,  10,  10,  10)
 s <- c( 10,  10,  10,  20,  20,  20)
 color_palette = c("#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00")
 
-dat <- get_data("gaussian/comp", 
-		1:3, 
-		n, p, g, s,
-		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), 
-		dgp=1:4, 
-		simnum=c(1,2,5,6), 
-		make.table=FALSE,
-		method.names=c("GSVB-D", "GSVB-B", "SSGL"),
-		method.cols=adjustcolor(color_palette[1:3], 0.5),
-		# fname="../figs/gaus_comp_1.pdf",
-		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
-			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
-			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$"))
-)
+# dat <- get_data("gaussian/comp", 
+# 		1:3, 
+# 		n, p, g, s,
+# 		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), 
+# 		dgp=1:4, 
+# 		simnum=c(1,2,5,6), 
+# 		make.table=FALSE,
+# 		method.names=c("GSVB-D", "GSVB-B", "SSGL"),
+# 		method.cols=adjustcolor(color_palette[1:3], 0.5),
+# 		# fname="../figs/gaus_comp_1.pdf",
+# 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
+# 			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
+# 			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$"))
+# )
 
 
 dat <- get_data("gaussian/comp", 
@@ -234,11 +234,11 @@ dat <- get_data("gaussian/comp",
 		n, p, g, s,
 		metrics=c("l2", "auc"),
 		dgp=1:4, 
-		simnum=c(1,2,4,5), 
+		simnum=c(2,5), 
 		make.table=FALSE,
 		method.names=c("GSVB-D", "GSVB-B", "SSGL"),
 		method.cols=adjustcolor(color_palette[1:3], 0.5),
-		# fname="../figs/gaus_comp_1.pdf",
+		fname="../figs/gaus_comp_1.pdf",
 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC")
 )
 
@@ -248,27 +248,15 @@ dat <- get_data("gaussian/comp",
 		n, p, g, s,
 		metrics=c("coverage.non_zero", "length.non_zero"), 
 		dgp=1:4, 
-		simnum=c(1,2,4,5), 
+		simnum=c(2,5), 
 		make.table=TRUE,
 		method.names=c("GSVB-D", "GSVB-B"),
 		method.cols=adjustcolor(color_palette[1:2], 0.5),
-		# fname="../figs/gaus_comp_2.pdf",
+		fname="../figs/gaus_comp_2.pdf",
 		metric.title=c(latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
 			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$"))
 )
 
-
-dat <- get_data("gaussian/comp", 
-		1:3, 
-		n, p, g, s,
-		metrics=c("coverage.non_zero", "length.non_zero"),
-		dgp=1:4, 
-		simnum=c(1,2,4,5), 
-		make.table=FALSE,
-		method.names=c("GSVB-D", "GSVB-B", "SSGL"),
-		method.cols=adjustcolor(color_palette[1:2], 0.5),
-		metric.title=c(latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
-			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")))
 
 
 n <- c(200, 200, 200, 200)
@@ -300,20 +288,20 @@ g <- c(  5,   5,   5,  10,  10,  10)
 s <- c(  5,   5,   5,  10,  10,  10) 
 
 color_palette = c("darkorchid", "#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00")
-dat <- get_data("binomial/comp", 
-		1:4, 
-		n, p, g, s,
-		# metrics=c("l2", "auc"), 
-		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
-		dgp=2:4, 
-		simnum=c(2,3,5,6),
-		# fname="../figs/binom_comp_1.pdf",
-		make.table=TRUE,
-		method.names=c("GSVB-J", "GSVB-D", "GSVB-B", "SSGL"),
-		method.cols=adjustcolor(color_palette[1:4], 0.5),
-		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
-			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
-			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")))
+# dat <- get_data("binomial/comp", 
+# 		1:4, 
+# 		n, p, g, s,
+# 		# metrics=c("l2", "auc"), 
+# 		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
+# 		dgp=2:4, 
+# 		simnum=c(2,3,5,6),
+# 		# fname="../figs/binom_comp_1.pdf",
+# 		make.table=TRUE,
+# 		method.names=c("GSVB-J", "GSVB-D", "GSVB-B", "SSGL"),
+# 		method.cols=adjustcolor(color_palette[1:4], 0.5),
+# 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
+# 			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
+# 			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")))
 
 
 dat <- get_data("binomial/comp", 
@@ -321,12 +309,13 @@ dat <- get_data("binomial/comp",
 		n, p, g, s,
 		metrics=c("l2", "auc"),
 		dgp=2:4, 
-		simnum=c(3, 6), 
+		simnum=c(3), 
 		make.table=FALSE,
 		method.names=c("GSVB-J", "GSVB-D", "GSVB-B", "SSGL"),
 		method.cols=adjustcolor(color_palette[1:4], 0.5),
-		# fname="../figs/binom_comp_1.pdf",
-		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC")
+		fname="../figs/binom_comp_1.pdf",
+		metric.title = c("", "")
+		# metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC")
 )
 
 
@@ -335,13 +324,14 @@ dat <- get_data("binomial/comp",
 		n, p, g, s,
 		metrics=c("coverage.non_zero", "length.non_zero"), 
 		dgp=2:4, 
-		simnum=c(3, 6),
+		simnum=c(3),
 		make.table=TRUE,
 		method.names=c("GSVB-J", "GSVB-D", "GSVB-B"),
 		method.cols=adjustcolor(color_palette[1:3], 0.5),
-		# fname="../figs/binom_comp_2.pdf",
-		metric.title=c(latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
-			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$"))
+		fname="../figs/binom_comp_2.pdf",
+		metric.title = c("", "")
+		# metric.title=c(latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
+		# 	       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$"))
 )
 
 
@@ -359,10 +349,10 @@ dat <- get_data("binomial/mcmc",
 		dgp=2:4, 
 		simnum=2,
 		make.table=FALSE,
-		fname="../figs/binom_mcmc_1.pdf",
+		# fname="../figs/binom_mcmc_1.pdf",
 		method.names=c("GSVB-D-J", "GSVB-B", "GSVB-D", "MCMC"),
 		method.cols=adjustcolor(color_palette[c(1,2,3,5)], 0.5),
-		max_psrf=1.80,
+		max_psrf=1.50,
 		metric.title=c("", "", "")
 		# metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
 		#     latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"),
@@ -401,12 +391,12 @@ dat <- get_data("poisson/comp",
 		1:3, 
 		n, p, g, s,
 		metrics=c("l2", "auc"),
-		dgp=2:4, 
-		simnum=c(2, 5), 
+		dgp=1:4, 
+		simnum=c(3), 
 		make.table=FALSE,
 		method.names=c("GSVB-D", "GSVB-B", "SSGL"),
 		method.cols=adjustcolor(color_palette[1:3], 0.5),
-		# fname="../figs/pois_comp_1.pdf",
+		fname="../figs/pois_comp_1.pdf",
 		metric.title= c("", "")
 		# metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC")
 )
@@ -416,12 +406,12 @@ dat <- get_data("poisson/comp",
 		1:2, 
 		n, p, g, s,
 		metrics=c("coverage.non_zero", "length.non_zero"), 
-		dgp=2:4, 
-		simnum=c(2, 5),
+		dgp=1:4, 
+		simnum=c(3),
 		make.table=TRUE,
 		method.names=c("GSVB-D", "GSVB-B"),
 		method.cols=adjustcolor(color_palette[1:2], 0.5),
-		# fname="../figs/pois_comp_2.pdf",
+		fname="../figs/pois_comp_2.pdf",
 		metric.title = c("", ""),
 		# metric.title=c(latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
 		# 	       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$"))
@@ -429,7 +419,7 @@ dat <- get_data("poisson/comp",
 
 
 
-n <- c(350, 350)
+n <- c(400, 400)
 p <- c(1e3, 1e3)
 g <- c(5,   5) 
 s <- c(3,   5) 
@@ -440,7 +430,7 @@ dat <- get_data("poisson/mcmc",
 		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), 
 		dgp=1:4, 
 		simnum=1,
-		max_psrf=5.50,
+		max_psrf=7.50,
 		# fname="../figs/pois_mcmc_1.pdf",
 		method.names=c("GSVB-D", "GSVB-D", "MCMC"),
 		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
