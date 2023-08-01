@@ -13,10 +13,10 @@ CORES <- read.env("CORES", 1)
 # Simulation settings
 # ----------------------------------------
 n <- c(400, 400) [SIM]
-p <- c(0.5e3, 0.5e3) [SIM]
+p <- c(1e3, 1e3) [SIM]
 g <- c(5,   5)   [SIM]
 s <- c(3,   5)   [SIM]
-bmax <- 0.45
+bmax <- 0.5
 runs <- 100
 
 dg <- list(
