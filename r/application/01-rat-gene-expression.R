@@ -53,7 +53,7 @@ gene_name_table = gene_name_table[keep, ]
 
 # keep 1000 genes with highest variance (on the log scale)
 X_var = apply(log(X), 1, var)
-keep = order(X_var, decreasing = T)[1:1000]
+keep = order(X_var, decreasing = T)[1:5000]
 X = X[keep, ]
 gene_name_table = gene_name_table[keep, ]
 
@@ -122,13 +122,6 @@ std = function(d)
 }
 
 
-rmstd = function(d)
-{
-    d$X. = d$scale = d$intercept = d$y. = d$intercept = NULL
-    d
-}
-
-
 rescale_fit = function(fit, d) 
 {
     if (fit$parameters$intercept) stop("not implemented")
@@ -162,61 +155,6 @@ rescale_fit = function(fit, d)
     return(fit)
 }
 
-
-rescale_beta = function(fit, d)
-{
-    b = fit$beta_hat
-
-    # for (g in which(fit$g > 0.5))
-    for (g in which(fit$g > 0.5))
-    {
-	G = which(fit$parameters$groups == g)
-
-	if (length(G) == 1) 
-	{
-	    b[G] = b[G] * d$scale[[g + fit$parameters$intercept]]
-	} else 
-	{
-	    b[G] = d$scale[[g + fit$parameters$intercept]] %*% b[G]
-	}
-    }
-
-    return(c(fit, list(beta_hat_scaled = b)))
-}
-
-
-rescale_BETA = function(BETA, d) 
-{
-
-    for (g in unique(d$groups))
-    {
-	G = which(d$groups == g)
-
-	if (length(G) == 1) 
-	{
-	    BETA[G, ] = BETA[G, ] * d$scale[[g]]
-	} else 
-	{
-	    BETA[G , ] = d$scale[[g]] %*% BETA[G, ]
-	}
-    }
-
-    return(BETA)
-}
-
-
-rescale_intercept = function(fit, d) 
-{
-    if (!is.null(fit$beta_hat_scaled)) {
-	fit$intercept_scaled = mean(d$y - d$X %*% fit$beta_hat_scaled)
-    } else {
-	stop("rescale beta first")
-    }
-
-    return(fit)
-}
-
-
 mse = function(x, y) mean((x - y)^2)
 
 
@@ -227,6 +165,11 @@ folds = 10
 results = array(NA, dim=c(4, folds, 2))
 models = list(diag_cov=list(), full_cov=list())
 
+# train the models 
+# you can skip this and load the pre-trianed models by calling:
+# 
+# load("../../rdata/application/rat/models_15k.RData")
+#
 for (fold in 1:folds) 
 {
     xval = cv(d$n, fold, folds=10, random_order=FALSE)
@@ -235,7 +178,6 @@ for (fold in 1:folds)
     ts = xval$test
     d.train = list(y=d$y[tr], X=d$X[tr, ], groups=d$groups)
     d.test  = list(y=d$y[ts], X=d$X[ts, ], groups=d$groups)
-
     
     # fit the model
     d.train = std(d.train)
@@ -248,16 +190,31 @@ for (fold in 1:folds)
     # save the models
     models$diag_cov[[fold]] = f1
     models$full_cov[[fold]] = f2 
+}
 
-    # evaluate the models
-    f1 = rescale_beta(f1, d.train)
-    f1 = rescale_intercept(f1, d.train)
 
-    f2 = rescale_beta(f2, d.train)
-    f2 = rescale_intercept(f2, d.train)
+for (fold in (1:10)[-3]) 
+{
+    xval = cv(d$n, fold, folds=10, random_order=FALSE)
+    tr = xval$train
+    ts = xval$test
+    d.train = list(y=d$y[tr], X=d$X[tr, ], groups=d$groups)
+    d.test  = list(y=d$y[ts], X=d$X[ts, ], groups=d$groups)
+    d.train = std(d.train)
+
+    # get model
+    f1 = rescale_fit(models$diag_cov[[fold]], d.train)
+    f2 = rescale_fit(models$full_cov[[fold]], d.train)
     
-    results[1, fold, 1] = mse(d.test$y, d.test$X %*% f1$beta_hat_scaled + f1$intercept_scaled)
-    results[1, fold, 2] = mse(d.test$y, d.test$X %*% f2$beta_hat_scaled + f2$intercept_scaled)
+    f1$intercept = mean(d.test$y - d.test$X %*% (f1$mu * (f1$g[d.train$groups] > 0.5)))
+    f2$intercept = mean(d.test$y - d.test$X %*% (f2$mu * (f2$g[d.train$groups] > 0.5)))
+
+    # evaluate the model
+    results[1, fold, 1] = mse(d.test$y, 
+	    d.test$X %*% (f1$mu * (f1$g[d.train$groups] > 0.5)) + f1$intercept)
+	    # d.test$X %*% (f1$mu * (f1$g[d.train$groups] > 0.5)) + f1$intercept)
+    results[1, fold, 2] = mse(d.test$y, 
+	    d.test$X %*% (f2$mu * (f2$g[d.train$groups] > 0.5)) + f2$intercept)
 
     results[2, fold, 1] = sum(f1$g > 0.5)
     results[2, fold, 2] = sum(f2$g > 0.5)
@@ -265,30 +222,27 @@ for (fold in 1:folds)
 
 
 # compute the PP coverage
-for (m in (1:10)[-3]) {
-    fold = m
+for (fold in (1:10)[-3]) 
+{
     xval = cv(d$n, fold, folds=10, random_order=FALSE)
-    
     tr = xval$train
     ts = xval$test
     d.train = list(y=d$y[tr], X=d$X[tr, ], groups=d$groups)
     d.test  = list(y=d$y[ts], X=d$X[ts, ], groups=d$groups)
-
     d.train = std(d.train)
-    f1 = models$diag_cov[[m]]
-    f1 = rescale_fit(f1, d.train)
-    f1.pred = gsvb::gsvb.predict(f1, d.test$X)
+    
+    # get model
+    f1 = rescale_fit(models$diag_cov[[fold]], d.train)
+    f2 = rescale_fit(models$full_cov[[fold]], d.train)
 
+    f1.pred = gsvb::gsvb.predict(f1, d.test$X)
     results[3, fold, 1] = 
     mean(d.test$y - f1$intercept >= f1.pred$quantiles[1, ] & 
 	 d.test$y - f1$intercept <= f1.pred$quantiles[2, ])
     results[4, fold, 1] = 
 	mean(abs(f1.pred$quantiles[2, ] - f1.pred$quantiles[1, ] ))
 
-    f2 = models$full_cov[[m]]
-    f2 = rescale_fit(f2, d.train)
     f2.pred = gsvb::gsvb.predict(f2, d.test$X)
-    
     results[3, fold, 2] = 
 	mean(d.test$y - f2$intercept >= f2.pred$quantiles[1, ] & 
 	 d.test$y - f2$intercept <= f2.pred$quantiles[2, ])
@@ -314,51 +268,66 @@ ssgl_results = matrix(NA, nrow=2, ncol=10)
 for (fold in 1:10) 
 {
     xval = cv(d$n, fold, folds=10, random_order=FALSE)
-    
     tr = xval$train
     ts = xval$test
     d.train = list(y=d$y[tr], X=d$X[tr, ], groups=d$groups)
     d.test  = list(y=d$y[ts], X=d$X[ts, ], groups=d$groups)
 
     # same standardization happens inside SSGL
-
     f.s = SSGL::SSGL(d.train$y, d.train$X, d.train$groups, family="gaussian",
 		     d.test$X, lambda0=6.04)
 
-    ssgl_models[[1]] = f.s
+    ssgl_models[[fold]] = f.s
+
+}
+
+for (fold in 1:10) 
+{
+    f.s = ssgl_models[[fold]]
 
     ssgl_results[1, fold] = mse(d.test$y, f.s$Y_pred)
     ssgl_results[2, fold] = sum(f.s$classifications)
 }
-
-
 
 # save the models
 save(list=c("models", "ssglcv", "ssgl_models"), 
      file="../../rdata/application/rat/models_15k.RData")
 
 # save the results
-save(results, file="../../rdata/application/rat/results.RData")
+save(list=c("results", "ssgl_results"), 
+     file="../../rdata/application/rat/results.RData")
 
 
 
 # -------------------------------------------------------------------------------
 # 				Print the results
 # -------------------------------------------------------------------------------
+load("../../rdata/application/rat/results.RData")
+load("../../rdata/application/rat/models_15k.RData")
+
 cat(apply(results, c(1, 3), function(x) 
+	sprintf("%.4f (%.3f)", mean(x[ ! (is.na(x) | is.nan(x)) ]), 
+			       sd(x[ ! (is.na(x) | is.nan(x)) ]))
+))
+cat(apply(ssgl_results, 1, function(x) 
 	sprintf("%.4f (%.3f)", mean(x[ ! (is.na(x) | is.nan(x)) ]), 
 			       sd(x[ ! (is.na(x) | is.nan(x)) ]))
 ))
 
 
-gene_name_table[
-    as.numeric(names(table(unlist(lapply(models$diag_cov, 
-					 function(f) which(f$g > 0.5))))))
-, ]
-gene_name_table[
-    as.numeric(names(table(unlist(lapply(models$full_cov, 
-				     function(f) which(f$g > 0.5))))))
-, ]
+cbind(gene_name_table[
+as.numeric(names(table(unlist(lapply(models$diag_cov, function(f) which(f$g > 0.5))))))
+, c(1,2)],
+table(unlist(lapply(models$diag_cov, function(f) which(f$g > 0.5)))))[ , -3]
+
+cbind(gene_name_table[
+as.numeric(names(table(unlist(lapply(models$full_cov, function(f) which(f$g > 0.5))))))
+, c(1, 2)],
+table(unlist(lapply(models$full_cov, function(f) which(f$g > 0.5)))))[ , -3]
+
+cbind(gene_name_table[
+as.numeric(names(table(unlist(lapply(ssgl_models,function(f) which(f$classifications != 0)))))), c(1,2) ],
+table(unlist(lapply(ssgl_models, function(f) which(f$classifications != 0)))))[, -3]
 
 
 
@@ -384,48 +353,13 @@ mse(d$y, d$X %*% f.ssgl$beta + f.ssgl$intercept)
 mse(d$y., d$X. %*% f1$beta_hat)
 mse(d$y., d$X. %*% f2$beta_hat)
 
-
-f1 = rescale_beta(f1, d)
-f2 = rescale_beta(f2, d)
-
-f1 = rescale_intercept(f1, d)
-f2 = rescale_intercept(f2, d)
-
 f1.scl = rescale_fit(f1, d)
 f2.scl = rescale_fit(f2, d)
 
-mse(d$y, d$X %*% f1$beta_hat_scaled + f1$intercept_scaled)
-mse(d$y, d$X %*% f2$beta_hat_scaled + f2$intercept_scaled)
-
-plot(f1$beta_hat_scaled)
-
+mse(d$y, d$X %*% f1.scl$beta_hat + f1$intercept)
+mse(d$y, d$X %*% f2.scl$beta_hat + f2$intercept)
 
 pred = gsvb::gsvb.predict(f1.scl, d$X, samples=10000)
 pred = gsvb::gsvb.predict(f2.scl, d$X, samples=10000)
 
-mse(d$y, pred$mean + f2.scl$intercept)
-
-mean(
-    d$y >= pred$quantiles[1, ] + f2.scl$intercept &
-    d$y <= pred$quantiles[2, ] + f2.scl$intercept
-)
-
-smp = gsvb::gsvb.sample(f1, 2000)
-BETA.scl = gsvb::gsvb.sample(f1.scl, 2000)
-BETA = rescale_BETA(smp$beta, d)
-
-matplot(t(BETA), type="l")
-matplot(t(BETA.scl$beta), type="l")
-
-apply(BETA[f1$g[d$groups] > 0.5, ], 1, sd)
-apply(BETA.scl$beta[f1$g[d$groups] > 0.5, ], 1, sd)
-
-gene_name_table[ which(f1$g > 0.5), ]
-gene_name_table[ which(f2$g > 0.5), ]
-
-plot(rescale_beta(f1$beta_hat[-1], ZZ$scl, p, groups))
-plot(rescale_beta(f1$mu[-1], ZZ$scl, p, groups))
-
-
 save(list=c("f1", "f2"), file="../../rdata/application/rat/models.RData")
-
