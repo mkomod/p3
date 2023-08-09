@@ -74,16 +74,17 @@ d = list(y=y, yy=yy, X=X, XX=X*5, groups=groups)
 # 				Fit models
 # -------------------------------------------------------------------------------
 #   Fit group LASSO
-cv.glasso = gglasso::cv.gglasso(d$X, d$yy, d$groups, loss="logit",
+cv.glasso = gglasso::cv.gglasso(d$XX, d$yy, d$groups, loss="logit",
 	    pred.loss="misclass", intercept=FALSE)
 plot(cv.glasso)
-lambda.min = cv.glasso$lambda[which.min(cv.glasso$cvlo)] # 0.002865525
+lambda.min = cv.glasso$lambda[which.min(cv.glasso$cvlo)] # lambda.min =  0.001766377
 
 f.gg = gglasso::gglasso(d$X, d$yy, loss="logit", lambda=lambda.min, 
 	    intercept=FALSE)
 plot(f.gg$beta)
 plot.norms(f.gg$beta, d$groups, ucnames)
 sum(nzero.groups(f.gg$beta, groups))
+
 
 
 # -----------------------------------------------------------------
@@ -96,48 +97,95 @@ plot(cv.ssgl$lambda0, cv.ssgl$cvse)
 
 f.ssgl.full = sparseGAM::SSGL(d$y, d$X, d$X, groups, family="binomial")
 
-f.ssgl = sparseGAM::SSGL(d$y, d$X, d$X[1:10, ], groups, family="binomial",
+f.ssgl = sparseGAM::SSGL(d$y, d$XX, d$XX[1:10, ], groups, family="binomial",
 		lambda0=cv.ssgl$lambda0.min)
 
 # f.ssgl = sparseGAM::SSGL(y, X, X[1:10, ], groups, family="binomial",
 # 		lambda0=25)
 
 
+
 # -----------------------------------------------------------------
 #   Fit GSVB
-f.gsvb.d = gsvb::gsvb.fit(d$y, d$X, d$groups, family="binomial-jaakkola",
+f.gsvb.d = gsvb::gsvb.fit(d$y, d$XX, d$groups, family="binomial-jaakkola", lambda=1,
 	    diag_covariance=TRUE, intercept=FALSE, track_elbo=FALSE, niter=1000)
 
-f.gsvb.b = gsvb::gsvb.fit(d$y, d$XX, d$groups, family="binomial-jaakkola",
+f.gsvb.b = gsvb::gsvb.fit(d$y, d$XX, d$groups, family="binomial-jaakkola", lambda=1,
 	    diag_covariance=FALSE, intercept=FALSE, track_elbo=FALSE, niter=1000)
 
-plot(f.gsvb.d$beta)
-plot.plot.norms(f.gsvb.d)
-sum(f.gsvb.d$g > 0.5)
+n.d = plot.norms(f.gsvb.d$beta, groups)
+n.b = plot.norms(f.gsvb.b$beta, groups)
+n.g = plot.norms(f.gg$beta, groups)
 
-plot(f.gsvb.b$beta)
-plot.norms(f.gsvb.b$beta, groups)
-sum(f.gsvb.d$g > 0.5)
+plot(n.d, ylim=c(0, 10))
+points(n.b, pch=2)
+points(n.g, pch=3)
+
+norms.d = comp.norms(f.gsvb.d, groups)
+q.norms.d = apply(norms.d, 1, quantile, probs=c(0.025, 0.975))
+
+
+
+
+
+# -----------------------------------------------------------------------------
+# 			Plot the norms of the methods
+# -----------------------------------------------------------------------------
+pdf("../figs/memset_norms.pdf", 9, 6)
+layout(matrix(c(1,1,1,1,2,2,2,2,3,3,3,3,3), ncol=1))
+
+# GSVB-D
+par(mar=c(0, 4, 0.1, 1), family="Times")
+plot.norms(f.gsvb.d$beta, groups, ylim=c(0, 3.5), pch=20, xaxt="n", las=1,
+	   col=ifelse(f.gsvb.d$g > 0.5, 1, "lightgrey"), ylab="GSVB-D")
+arrows((1:max(groups)) * (-1)^((f.gsvb.d$g > 0.5) - 1), 
+       q.norms.d[1, ], y1=q.norms.d[2, ], code=0, col=1, lwd=2)
+selected = (f.gsvb.d$g > 0.5 & f.gsvb.b$g > 0.5) | (f.gsvb.d$g > 0.5 & n.g)
+abline(v = which(selected), lty=2, lwd=0.5, col=2)
+grid(nx=0, ny=5)
+
+# GSVB-B
+par(mar=c(0, 4, 0, 1))
+plot.norms(f.gsvb.b$beta, groups, ylim=c(0, 13.5), pch=20, xaxt="n", las=1,
+	   col=ifelse(f.gsvb.b$g > 0.5, 1, "lightgrey"), ylab="GSVB-B")
+arrows((1:max(groups)) * (-1)^((f.gsvb.b$g > 0.5) - 1), 
+       q.norms.b[1, ], y1=q.norms.b[2, ], code=0, col=1, lwd=2)
+selected = (f.gsvb.b$g > 0.5 & f.gsvb.d$g > 0.5) | (f.gsvb.b$g > 0.5 & n.g)
+abline(v = which(selected), lty=2, lwd=0.5, col=2)
+grid(nx=0, ny=5)
+par(mar=c(3, 4, 0, 1))
+
+
+# Group LASSO
+plot.norms(f.gg$beta, groups, ylim=c(0, 10.5), pch=20, las=1, xaxt="n",
+	   col=ifelse(n.g, 1, "lightgrey"), ylab="Group LASSO")
+selected = (n.g & f.gsvb.d$g > 0.5) | (f.gsvb.b$g > 0.5 & n.g)
+abline(v = which(selected), lty=2, lwd=0.5, col=2)
+axis(1, 1:max(groups), F, lwd=0, lwd.ticks=0.8)
+text(x=1:max(groups), par("usr")[3] - 0.8,
+     labels = ucnames, srt = -45, 
+     pos = 1, xpd = TRUE, cex=0.82)
+grid(nx=0, ny=5)
+
+
+dev.off()
+
+
+
+
+
+
 
 
 # -----------------------------------------------------------------
 #   Save everything
-save(list=c("f.gsvb.b", "f.gsvb.d", "f.gg", "cv.glasso", "cv.ssgl"),
+save(list=c("f.gsvb.b", "f.gsvb.d", "f.gg", "cv.glasso", "cv.ssgl", "f.ssgl"),
      file="../../rdata/application/memset/models.RData")
 
 
-# -------------------------------------------------------------------------------
-# 				Compare the models
-# -------------------------------------------------------------------------------
-ssgl.pred = 1 / (1 + exp(- cbind(1, X) %*% c(f.ssgl$beta0[1], f.ssgl$beta)))
-glas.pred = 1 / (1 + exp(- X %*% f.gg$beta))
-gsvb.d.pred = gsvb::gsvb.predict(f.gsvb.d, d.test$X)
-gsvb.b.pred = gsvb::gsvb.predict(f.gsvb.b, d.test$XX)
-
-table(d$y, glas.pred > 0.5)
-table(d$y, ssgl.pred > 0.5)
-table(d$y, gsvb.d.pred$mean > 0.5)
-table(d$y, gsvb.b.pred$mean > 0.5)
+# -----------------------------------------------------------------
+#   Load
+load("../../rdata/application/memset/models.RData")
 
 
 
@@ -191,24 +239,37 @@ d.test = list(y=y, yy=yy, X=X, XX=X*5, groups=groups)
 
 
 
+
 # -------------------------------------------------------------------------------
 # 			Compare the models on test data
 # -------------------------------------------------------------------------------
-glas.pred = 1 / (1 + exp(- d.test$X %*% f.gg$beta))
-ssgl.pred = 1 / (1 + exp(- cbind(1, d.test$X) %*% c(f.ssgl$beta0[1], f.ssgl$beta)))
+glas.pred = 1 / (1 + exp(- d.test$XX %*% f.gg$beta))
+# ssgl.pred = 1 / (1 + exp(- cbind(1, d.test$X) %*% c(f.ssgl$beta0[1], f.ssgl$beta)))
 gsvb.d.pred = gsvb::gsvb.predict(f.gsvb.d, d.test$X)
 gsvb.b.pred = gsvb::gsvb.predict(f.gsvb.b, d.test$XX)
 
-# table(d.test$y, glas.pred > 0.5)
-table(d.test$y, ssgl.pred > 0.5)
+table(d.test$y, glas.pred > 0.5)
+# table(d.test$y, ssgl.pred > 0.5)
 table(d.test$y, gsvb.d.pred$mean > 0.5)
 table(d.test$y, gsvb.b.pred$mean > 0.5)
 
+
+# compute rho_max
+
+taus = seq(0.01, 0.99, by=0.01)
+max(sapply(taus, function(tau) cor(d.test$y, glas.pred > tau)))
+max(sapply(taus, function(tau) cor(d.test$y, gsvb.d.pred$mean > tau))) 
+max(sapply(taus, function(tau) cor(d.test$y, gsvb.b.pred$mean > tau)))
+
+
+
 # ROSE::roc.curve(d.test$y, as.numeric(glas.pred), col=3, add=T)
+ROSE::roc.curve(d.test$y, as.numeric(glas.pred))
 ROSE::roc.curve(d.test$y, as.numeric(ssgl.pred))
 ROSE::roc.curve(d.test$y, as.numeric(gsvb.d.pred$mean), col=2, add=T)
 ROSE::roc.curve(d.test$y, as.numeric(gsvb.b.pred$mean), col=3, add=T)
 
+ROSE::accuracy.meas(d.test$y, as.numeric(glas.pred))
 ROSE::accuracy.meas(d.test$y, as.numeric(ssgl.pred))
 ROSE::accuracy.meas(d.test$y, as.numeric(gsvb.d.pred$mean))
 ROSE::accuracy.meas(d.test$y, as.numeric(gsvb.b.pred$mean))
@@ -236,3 +297,8 @@ cat.res(d.test$y, as.numeric(gsvb.b.pred$mean),
 	f.gsvb.b$beta * (f.gsvb.b$g[groups] > 0.5), groups),
 cat.res(d.test$y, as.numeric(ssgl.pred), ssgl.beta, groups)
 )
+
+# correlation between true and predicted for different threshold
+
+
+
