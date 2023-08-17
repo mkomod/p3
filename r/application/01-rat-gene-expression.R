@@ -29,16 +29,16 @@ row_names = as.character(dat[-1, 1])
 row_names = unlist(dat[-1, 1])
 
 X = dat[-1, -1]
-rownames(X) = NULL
-colnames(X) = NULL
+# rnames = rownames(X)
+# cnames = colnames(X)
 X = apply(X, 2, as.numeric)
 
-# get gene symbols from probe ids
 gene_name_table = AnnotationDbi::select(rat2302.db, row_names, 
 	c("SYMBOL","ENTREZID", "GENENAME"))
 gene_name_table = gene_name_table[!duplicated(gene_name_table$PROBEID), ]
 
 # set up outcome and design matrix
+trim32_index = which(row_names == gene_name_table[which(gene_name_table$SYMBOL == "Trim32"), ]$PROBEID)
 trim32_index = which(gene_name_table$SYMBOL == "Trim32")
 Y = X[trim32_index, ]
 X = X[-trim32_index, ]
@@ -49,13 +49,18 @@ X = X[-trim32_index, ]
 q25 = quantile(X, 0.25, na.rm=T)
 keep = which(apply(X, 1, function(x) max(x) >= q25))
 X = X[keep, ]
-gene_name_table = gene_name_table[keep, ]
+row_names = row_names[keep]
 
 # keep 1000 genes with highest variance (on the log scale)
 X_var = apply(log(X), 1, var)
 keep = order(X_var, decreasing = T)[1:5000]
 X = X[keep, ]
-gene_name_table = gene_name_table[keep, ]
+row_names = row_names[keep]
+
+# get gene symbols from probe ids
+gene_name_table = AnnotationDbi::select(rat2302.db, row_names, 
+	c("SYMBOL","ENTREZID", "GENENAME"))
+gene_name_table = gene_name_table[!duplicated(gene_name_table$PROBEID), ]
 
 
 # -------------------------------------------------------------------------------
@@ -341,6 +346,11 @@ f.ssgl = SSGL(d$y, d$X, 1, 100, d$groups)
 f1 = gsvb::gsvb.fit(d$y., d$X., d$groups, intercept=FALSE, diag_covariance=TRUE)
 f2 = gsvb::gsvb.fit(d$y., d$X., d$groups, intercept=FALSE, diag_covariance=FALSE)
 
+save(list=c("f1", "f2"), file="../../rdata/application/rat/models_15k_full_gsvb.RData")
+
+gene_name_table[f1$g > 0.5, ]
+gene_name_table[f2$g > 0.5, ]
+
 plot(f1$g)
 which(f1$g > 0.5)
 plot(f1$beta_hat)
@@ -362,4 +372,3 @@ mse(d$y, d$X %*% f2.scl$beta_hat + f2$intercept)
 pred = gsvb::gsvb.predict(f1.scl, d$X, samples=10000)
 pred = gsvb::gsvb.predict(f2.scl, d$X, samples=10000)
 
-save(list=c("f1", "f2"), file="../../rdata/application/rat/models.RData")
