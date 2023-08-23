@@ -15,7 +15,7 @@ CORES <- read.env("CORES", 1)
 n <- c(400, 400) [SIM]
 p <- c(1e3, 1e3) [SIM]
 g <- c(5,   5)   [SIM]
-s <- c(3,   5)   [SIM]
+s <- c(2,   4)   [SIM]
 bmax <- 0.45
 runs <- 100
 
