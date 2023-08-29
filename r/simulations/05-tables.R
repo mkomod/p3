@@ -163,6 +163,12 @@ get_data <- function(family, methods, n, p, g, s, metrics,
 		att = aggregate(f, ddat, function(x) sum(is.na(x)), na.action=NULL)
 		attx = 1:nrow(att)
 		attx[which(att[ , 3] >= 95)] = -5
+		if (any(att[ , 3]  == 100)) {
+		    for (ai in which(att[ , 3] == 100)) {
+			ddat[(100 * ai - 100) : (100 * ai), 7:ncol(ddat)] = -5
+		     }
+		}
+
 		
 		# create the plot
 		vioplot::vioplot(f, data=ddat, add=TRUE, wex=0.7,
@@ -271,7 +277,7 @@ dat <- get_data("gaussian/mcmc",
 		simnum=1:2, 
 		make.table=F,
 		fname="../figs/gaus_mcmc_1.pdf",
-		max_psrf=2.50,
+		max_psrf=3.50,
 		method.names=c("GSVB-D", "GSVB-B", "MCMC"),
 		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
@@ -305,14 +311,15 @@ color_palette = c("darkorchid", "#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00")
 
 
 dat <- get_data("binomial/comp", 
-		1:4, 
+		2:4, 
 		n, p, g, s,
 		metrics=c("l2", "auc"),
 		dgp=2:4, 
 		simnum=c(3), 
 		make.table=FALSE,
-		method.names=c("GSVB-J", "GSVB-D", "GSVB-B", "SSGL"),
-		method.cols=adjustcolor(color_palette[1:4], 0.5),
+		# method.names=c("GSVB-J", "GSVB-D", "GSVB-B", "SSGL"),
+		method.names=c("GSVB-D", "GSVB-B", "SSGL"),
+		method.cols=adjustcolor(color_palette[2:4], 0.5),
 		fname="../figs/binom_comp_1.pdf",
 		metric.title = c("", "")
 		# metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC")
@@ -320,14 +327,15 @@ dat <- get_data("binomial/comp",
 
 
 dat <- get_data("binomial/comp", 
-		1:3, 
+		2:3, 
 		n, p, g, s,
 		metrics=c("coverage.non_zero", "length.non_zero"), 
 		dgp=2:4, 
 		simnum=c(3),
 		make.table=TRUE,
-		method.names=c("GSVB-J", "GSVB-D", "GSVB-B"),
-		method.cols=adjustcolor(color_palette[1:3], 0.5),
+		# method.names=c("GSVB-J", "GSVB-D", "GSVB-B"),
+		method.names=c("GSVB-D", "GSVB-B"),
+		method.cols=adjustcolor(color_palette[2:3], 0.5),
 		fname="../figs/binom_comp_2.pdf",
 		metric.title = c("", "")
 		# metric.title=c(latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
@@ -341,18 +349,19 @@ p <- c(1e3, 1e3)
 g <- c(5,   5)
 s <- c(3,   5)
 
+color_palette = c("#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00")
 
 dat <- get_data("binomial/mcmc", 
-		1:4, 
+		2:4, 
 		n, p, g, s,
 		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
 		dgp=2:4, 
 		simnum=2,
 		make.table=FALSE,
-		# fname="../figs/binom_mcmc_1.pdf",
+		fname="../figs/binom_mcmc_1.pdf",
 		method.names=c("GSVB-D-J", "GSVB-B", "GSVB-D", "MCMC"),
-		method.cols=adjustcolor(color_palette[c(1,2,3,5)], 0.5),
-		max_psrf=1.50,
+		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
+		max_psrf=3.50,
 		metric.title=c("", "", "")
 		# metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
 		#     latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"),
@@ -423,6 +432,7 @@ n <- c(400, 400)
 p <- c(1e3, 1e3)
 g <- c(5,   5) 
 s <- c(3,   5) 
+color_palette = c("#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00")
 
 dat <- get_data("poisson/mcmc", 
 		1:3, 
@@ -430,7 +440,7 @@ dat <- get_data("poisson/mcmc",
 		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), 
 		dgp=1:4, 
 		simnum=1,
-		max_psrf=7.50,
+		max_psrf=3.50,
 		# fname="../figs/pois_mcmc_1.pdf",
 		method.names=c("GSVB-D", "GSVB-D", "MCMC"),
 		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
@@ -442,13 +452,39 @@ dat <- get_data("poisson/mcmc",
 )
 
 
+dat[dat[ , "m"] == 3, ][79, ]
+
+
+
+
+# ------------------------------------------------------------------------------
+# 			 	Gaus Misc
+# ------------------------------------------------------------------------------
+#       1    2    3    4   5    6     7    8    9   10    11 
+n <- c(250, 500, 1e3, 250, 500, 1e3, 1e3, 1e3, 1e3, 1e3, 1e3)
+p <- c(5e3, 5e3, 5e3, 5e3, 5e3, 5e3, 5e3, 5e3, 5e3, 5e3, 5e3)
+g <- c( 10,  10,  10,  10,  10,  10,  10, 10,  10,  10,  10) 
+s <- c( 10,  10,  10,  20,  20,  20,  10, 20,  25,  50,  100)
+
+color_palette = c("#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00")
+color_palette = c("#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00")
+
+dat <- get_data("gaussian/comp", 
+		c(1,2,3), 
+		n, p, g, s,
+		metrics=c("l2", "auc"),
+		dgp=1:4, 
+		simnum=8:11, 
+		# make.table=T,
+		make.plot=T,
+		method.names=c("GSVB-D", "GSVB-B", "SSGL"),
+		method.cols=adjustcolor(color_palette[1:3], 0.5),
+		# fname="../figs/gaus_comp_1.pdf",
+		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC")
+)
+
 
 
 load(file=sprintf("../../rdata/simulations/%s/%d_%d_%d.RData", 
-		  "poisson/mcmc/", 1, 1, 3))
-dnames <- colnames(get(sprintf("1_1_%d", i)))
-x = get(sprintf("1_1_%d", 3))
-
-
-cols = adjustcolor(colorRampPalette(c("white", "darkgreen"))(4)[1:4], 0.15)
-color_palette = adjustcolor(c("darkorchid", "#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00"), 0.5)
+		  "gaussian/comp", 1, 8, 3))
+x = get(sprintf("1_8_3"))

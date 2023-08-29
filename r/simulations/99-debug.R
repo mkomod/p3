@@ -96,7 +96,9 @@ pred <- spsl::spsl.predict(f, newdata=d$test$X)
 # ----------------------------------------
 # Bimom settings
 # ----------------------------------------
-d <- dgp_diag(350, 1000, 5, 3, 1.5, list(model="binomial", corr=0))
+d <- dgp_diag(1000, 5000, 5, 3, 1.5, list(model="binomial", corr=0))
+
+
 d <- dgp_wishart(350, 1000, 5, 3, 0.8, list(model="binomial", dof=3, weight=0.9))
 m_par <- list(family="binomial-jensens", lambda=1, a0=1, b0=200, diag_covariance=FALSE, intercept=TRUE)
 m_par <- list(family="binomial-jaakkola", lambda=1, a0=1, b0=200, diag_covariance=TRUE, intercept=TRUE)
@@ -150,7 +152,6 @@ points(d$b, pch=20)
 # ----------------------------------------
 # Pois settings
 # ----------------------------------------
-d <- dgp_diag(300, 1000, 5, 3, 1.0, list(model="poisson", corr=0))
 d <- dgp_wishart(500, 1000, 5, 10, 0.45, list(model="poisson", dof=3, weight=0.9), seed=5)
 
 m_par <- list(family="poisson", lambda=1, a0=1, b0=200, 
@@ -266,6 +267,7 @@ abline(v=d$y[1])
 # Posterior predictive SpSL
 # ---------------------------------------- 
 d <- dgp_diag(200, 1000, 5, 3, pars=list(corr=0))
+
 mf <- spsl::spsl.group_sparse(d$y, d$X, d$groups, intercept=TRUE, mcmc_samples=2e4)
 mf$T <- mf$T[ , -(1:2000)]
 
@@ -479,4 +481,13 @@ d <- dgp_diag(200, 1000, 5, 5, 1.5, list(model="gaussian", corr=0), seed=1)
 m_par <- list(family="gaussian", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, 
 	      b_t=1e-3, mcmc_samples=2e3, burnin=5e2, intercept=TRUE)
 f <- m_spsl(d, m_par)
+
+d <- dgp_diag(400, 1000, 5, 3, 0.45, list(model="poisson", corr=0), seed=79)
+f = spsl::spsl.fit(d$y, d$X, d$groups, family="poisson", intercept=FALSE,
+    mcmc_samples=100000, burnin=50000)
+
+plot(f$beta_hat)
+points(d$b, pch=20)
+
+matplot(t(f$B[1:10,]), type="l")
 
