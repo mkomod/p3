@@ -29,8 +29,8 @@ row_names = as.character(dat[-1, 1])
 row_names = unlist(dat[-1, 1])
 
 X = dat[-1, -1]
-# rnames = rownames(X)
-# cnames = colnames(X)
+rownames(X) = NULL
+colnames(X) = NULL
 X = apply(X, 2, as.numeric)
 
 gene_name_table = AnnotationDbi::select(rat2302.db, row_names, 
@@ -39,7 +39,7 @@ gene_name_table = gene_name_table[!duplicated(gene_name_table$PROBEID), ]
 
 # set up outcome and design matrix
 trim32_index = which(row_names == gene_name_table[which(gene_name_table$SYMBOL == "Trim32"), ]$PROBEID)
-trim32_index = which(gene_name_table$SYMBOL == "Trim32")
+# trim32_index = which(gene_name_table$SYMBOL == "Trim32")
 Y = X[trim32_index, ]
 X = X[-trim32_index, ]
 
@@ -198,7 +198,7 @@ for (fold in 1:folds)
 }
 
 
-for (fold in (1:10)[-3]) 
+for (fold in (1:10)) 
 {
     xval = cv(d$n, fold, folds=10, random_order=FALSE)
     tr = xval$train
@@ -227,7 +227,7 @@ for (fold in (1:10)[-3])
 
 
 # compute the PP coverage
-for (fold in (1:10)[-3]) 
+for (fold in (1:10)) 
 {
     xval = cv(d$n, fold, folds=10, random_order=FALSE)
     tr = xval$train
@@ -319,20 +319,19 @@ cat(apply(ssgl_results, 1, function(x)
 			       sd(x[ ! (is.na(x) | is.nan(x)) ]))
 ))
 
-
 cbind(gene_name_table[
 as.numeric(names(table(unlist(lapply(models$diag_cov, function(f) which(f$g > 0.5))))))
 , c(1,2)],
-table(unlist(lapply(models$diag_cov, function(f) which(f$g > 0.5)))))[ , -3]
+table(unlist(lapply(models$diag_cov, function(f) which(f$g > 0.5)))))
 
 cbind(gene_name_table[
 as.numeric(names(table(unlist(lapply(models$full_cov, function(f) which(f$g > 0.5))))))
 , c(1, 2)],
-table(unlist(lapply(models$full_cov, function(f) which(f$g > 0.5)))))[ , -3]
+table(unlist(lapply(models$full_cov, function(f) which(f$g > 0.5)))))
 
 cbind(gene_name_table[
 as.numeric(names(table(unlist(lapply(ssgl_models,function(f) which(f$classifications != 0)))))), c(1,2) ],
-table(unlist(lapply(ssgl_models, function(f) which(f$classifications != 0)))))[, -3]
+table(unlist(lapply(ssgl_models, function(f) which(f$classifications != 0)))))
 
 
 
@@ -342,7 +341,7 @@ table(unlist(lapply(ssgl_models, function(f) which(f$classifications != 0)))))[,
 # standardize the data
 d = std(d)
 
-f.ssgl = SSGL(d$y, d$X, 1, 100, d$groups)
+f.ssgl = SSGL(d$y, d$X, d$X, 1, 100, d$groups)
 f1 = gsvb::gsvb.fit(d$y., d$X., d$groups, intercept=FALSE, diag_covariance=TRUE)
 f2 = gsvb::gsvb.fit(d$y., d$X., d$groups, intercept=FALSE, diag_covariance=FALSE)
 
@@ -351,24 +350,14 @@ save(list=c("f1", "f2"), file="../../rdata/application/rat/models_15k_full_gsvb.
 gene_name_table[f1$g > 0.5, ]
 gene_name_table[f2$g > 0.5, ]
 
-plot(f1$g)
-which(f1$g > 0.5)
-plot(f1$beta_hat)
-
-plot(f2$g)
-which(f2$g > 0.5)
-plot(f2$beta_hat)
-
-mse(d$y, d$X %*% f.ssgl$beta + f.ssgl$intercept)
 mse(d$y., d$X. %*% f1$beta_hat)
 mse(d$y., d$X. %*% f2$beta_hat)
 
-f1.scl = rescale_fit(f1, d)
-f2.scl = rescale_fit(f2, d)
+f1.pred = gsvb::gsvb.predict(f1, d$X.)
+mean(d$y. >= f1.pred$quantiles[1, ] & d$y. <= f1.pred$quantiles[2, ])
+mean(abs(f1.pred$quantiles[2, ] - f1.pred$quantiles[1, ] ))
 
-mse(d$y, d$X %*% f1.scl$beta_hat + f1$intercept)
-mse(d$y, d$X %*% f2.scl$beta_hat + f2$intercept)
-
-pred = gsvb::gsvb.predict(f1.scl, d$X, samples=10000)
-pred = gsvb::gsvb.predict(f2.scl, d$X, samples=10000)
-
+f2.pred = gsvb::gsvb.predict(f2, d$X.)
+mean(d$y. >= f2.pred$quantiles[1, ] & d$y. <= f2.pred$quantiles[2, ])
+mean(abs(f2.pred$quantiles[2, ] - f2.pred$quantiles[1, ] ))
+    

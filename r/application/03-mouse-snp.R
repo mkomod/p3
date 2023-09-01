@@ -169,72 +169,100 @@ rm(list=c("i", "p", "X", "S", "high_cor", "groups","ids", "keep", "y", "varXq25"
 # 			Create Train and Test sets
 # -------------------------------------------------------------------------------
 # get xval indices
-xval = cv(length(d$y), 1)
+models_gsvb = list(diag_cov=list(), block_cov=list())
+results = array(NA, dim=c(4, 10, 2))
 
-d.train = list(y=d$y[xval$train], X=d$X[xval$train, ], groups=d$groups, 
-	       genotypes=d$genotypes[xval$train, ])
-d.train = std(d.train)
+for (fold in 1:10) 
+{
+    xval = cv(length(d$y), fold, folds=10, random_order=FALSE)
 
-d.test  = list(y=d$y[xval$test ], X=d$X[xval$test , ], groups=d$groups, 
-	       genotypes=d$genotypes[xval$train, ])
+    d.train = list(y=d$y[xval$train], X=d$X[xval$train, ], groups=d$groups, 
+		   genotypes=d$genotypes[xval$train, ])
+    d.train = std(d.train)
+
+    d.test  = list(y=d$y[xval$test ], X=d$X[xval$test , ], groups=d$groups, 
+		   genotypes=d$genotypes[xval$train, ])
+
+
+    f1 = gsvb::gsvb.fit(d.train$y., d.train$X., d$groups, intercept=F, niter=200,
+			track_elbo=FALSE)
+    models_gsvb$diag_cov[[fold]] = f1
+
+    f2 = gsvb::gsvb.fit(d.train$y., d.train$X., d$groups, intercept=F, 
+			diag_covariance=FALSE, niter=200, track_elbo=FALSE)
+    models_gsvb$block_cov[[fold]] = f2
+
+    # rescale so they work on the test data
+    f1. = rescale_fit(f1, d.train)
+    f2. = rescale_fit(f2, d.train)
+
+    results[1, fold, 1] = sum(f1$g > 0.1)
+    results[1, fold, 2] = sum(f2$g > 0.1)
+
+    results[2, fold, 1] = mse(d.test$y, d.test$X %*% f1.$beta + f1.$intercept)
+    results[2, fold, 2] = mse(d.test$y, d.test$X %*% f2.$beta + f2.$intercept)
+
+    set.seed(1234)
+    y.star1 = pred.y(f1., d.test$X, d.train$y, d.train$X, sample=1e4)
+    pp = t(apply(y.star1, 1, quantile, probs=c(0.025, 0.975)))
+    results[3, fold, 1] = mean(d.test$y >= pp[ , 1] & d.test$y <= pp[, 2])
+    results[4, fold, 1] = mean(pp[ , 2] - pp[ , 1])
+
+    y.star2 = pred.y(f2., d.test$X, d.train$y, d.train$X, sample=1e4)
+    pp = t(apply(y.star2, 1, quantile, probs=c(0.025, 0.975)))
+    results[3, fold, 2] = mean(d.test$y >= pp[ , 1] & d.test$y <= pp[, 2])
+    results[4, fold, 2] = mean(pp[ , 2] - pp[ , 1])
+}
+
+save(list=c("models_gsvb"), file="../../rdata/application/mouse/xval_gsvb_models.RData")
+save(list=c("results"), file="../../rdata/application/mouse/xval_gsvb_results.RData")
+
+
+
+
+ssgl_models = list(models=list(), cv=list())
+ssgl_results = matrix(NA, nrow=2, ncol=10)
+
+for (fold in 1:10) 
+{
+    xval = cv(length(d$y), fold, folds=10, random_order=FALSE)
+
+    d.train = list(y=d$y[xval$train], X=d$X[xval$train, ], groups=d$groups, 
+		   genotypes=d$genotypes[xval$train, ])
+
+    d.test  = list(y=d$y[xval$test ], X=d$X[xval$test , ], groups=d$groups, 
+		   genotypes=d$genotypes[xval$train, ])
+
+    lambda0 = seq(50, 10, by=-10)
+    cv.ssgl = sparseGAM::cv.SSGL(d.train$y, d.train$X, d.train$groups, lambda0=lambda0)
+
+    f.ssgl = sparseGAM::SSGL(d.train$y, d.train$X, d.train$X, 
+			     d.train$groups, lambda0=cv.ssgl$lambda0.min)
+    
+    ssgl_models$cv[[fold]] = cv.ssgl
+    ssgl_models$models[[fold]] = f.ssgl
+
+    ssgl_results[1, fold] = sum(nzero.groups(f.ssgl$beta, d$groups))
+    ssgl_results[2, fold] = mse(d.test$y, d.test$X %*% f.ssgl$beta + f.ssgl$beta0)
+}
+
+save(list=c("ssgl_results"), file="../../rdata/application/mouse/xval_ssgl_results.RData")
+save(list=c("ssgl_models"), file="../../rdata/application/mouse/xval_ssgl_models.RData")
+
 
 
 # -------------------------------------------------------------------------------
-# 			    Fit the models
+# 			   Results
 # -------------------------------------------------------------------------------
-f1 = gsvb::gsvb.fit(d.train$y., d.train$X., d$groups, intercept=F, niter=20,
-		    track_elbo=FALSE)
-f2 = gsvb::gsvb.fit(d.train$y., d.train$X., d$groups, intercept=F, 
-		    diag_covariance=FALSE, niter=30, track_elbo=FALSE)
+load("../../rdata/application/mouse/xval_ssgl_results.RData")
+load("../../rdata/application/mouse/xval_gsvb_results.RData")
 
-save(list=c("f1", "f2"), file="../../rdata/application/mouse/models.RData")
+round(apply(results, c(1,3), mean), 3)
+round(apply(results, c(1,3),  sd), 3)
 
-layout(matrix(1:2, nrow=1))
-plot(f1$g); plot(f2$g)
-plot(f1$beta); plot(f2$beta)
+round(apply(ssgl_results,1, mean), 3)
+round(apply(ssgl_results,1, sd), 3)
 
-f1$beta[f1$g[d$groups] > 0.1]
-
-# which groups (SNPs) are selected
-which(f1$g > 0.5)
-which(f2$g > 0.5)
-
-get_genes(d$snps[f1$g > 0.1])
-get_genes(d$snps[f2$g > 0.1])
-
-snps[which(f1$g > 0.1)]
-snps[which(f2$g > 0.1)]
-
-mse(d.train$y., d.train$X. %*% f1$beta)
-mse(d.train$y., d.train$X. %*% f2$beta)
-
-
-# -------------------------------------------------------------------------------
-# 			    Evaluate the models
-# -------------------------------------------------------------------------------
-# rescale so they work on the test data
-f1. = rescale_fit(f1, d.train)
-f2. = rescale_fit(f2, d.train)
-
-round(f1.$beta[f1$g[d$groups] > 0.1], 4)
-round(f2.$beta[f2$g[d$groups] > 0.1], 4)
-
-sum(f1$g > 0.1)
-sum(f2$g > 0.1)
-
-mse(d.test$y, d.test$X %*% f1.$beta + f1.$intercept)
-mse(d.test$y, d.test$X %*% f2.$beta + f2.$intercept)
-
-set.seed(1234)
-y.star1 = pred.y(f1., d.test$X, d.train$y, d.train$X, sample=1e4)
-pp = t(apply(y.star1, 1, quantile, probs=c(0.025, 0.975)))
-mean(d.test$y >= pp[ , 1] & d.test$y <= pp[, 2])
-mean(pp[ , 2] - pp[ , 1])
-
-y.star2 = pred.y(f2., d.test$X, d.train$y, d.train$X, sample=1e4)
-pp = t(apply(y.star2, 1, quantile, probs=c(0.025, 0.975)))
-mean(d.test$y >= pp[ , 1] & d.test$y <= pp[, 2])
-mean(pp[ , 2] - pp[ , 1])
 
 # -------------------------------------------------------------------------------
 # 			   Plot the uncertainty
@@ -323,33 +351,50 @@ as.hexmode(col2rgb(adjustcolor(colorRampPalette(c("white", "darkblue"))(4), 0.3)
 
 
 # -------------------------------------------------------------------------------
+# 			   	Selected SNPs
+# -------------------------------------------------------------------------------
+load(file="../../rdata/application/mouse/xval_gsvb_models.RData")
+load(file="../../rdata/application/mouse/xval_ssgl_models.RData")
+
+
+table(unlist(lapply(models_gsvb$diag_cov, function(f) {
+    d$snps[f$g > 0.5]
+})))
+
+table(unlist(lapply(models_gsvb$block_cov, function(f) {
+    d$snps[f$g > 0.5]
+})))
+
+table(unlist(lapply(ssgl_models$models, function(f) {
+    d$snps[f$classification == 1]
+})))
+
+
+# -------------------------------------------------------------------------------
 # 			   	Misc.
 # -------------------------------------------------------------------------------
-lambda0 = seq(50, 5, by=-5)
-cv.ssgl = sparseGAM::cv.SSGL(d.train$y, d.train$X, d.train$groups, lambda0=lambda0)
-
-f.ssgl = sparseGAM::SSGL(d.train$y, d.train$X, d.train$X, 
-			 d.train$groups, lambda0=5)
-
-plot(f.ssgl$beta)
-sum(nzero.groups(f.ssgl$beta, d$groups))
-mse(d.test$y, d.test$X %*% f.ssgl$beta + f.ssgl$beta0)
-
-
-save(list=c("cv.ssgl", "f.ssgl"), file="../../rdata/application/mouse/models_ssgl.RData")
-
-# -------------------------------------------------------------------------------
-# 			   	Misc.
-# -------------------------------------------------------------------------------
-# fit as univariate analysis
-# for this we are going to use the spike and slab prior
-
 # fit the method
-ff = sparsevb::svb.fit(d.train$genotypes, d.train$y., family="linear")
+d.std = std(d)
+
+f1 = gsvb::gsvb.fit(d.std$y., d.std$X., d$groups, intercept=F, niter=150,
+		    track_elbo=FALSE)
+f2 = gsvb::gsvb.fit(d.std$y., d.std$X., d$groups, intercept=F, 
+		    diag_covariance=FALSE, niter=150, track_elbo=FALSE)
+
+
+d$snps[ f1$g > 0.5 ]
+d$snps[ f2$g > 0.5 ]
+
+get_genes( d$snps[ f1$g > 0.5 ] )
+get_genes( d$snps[ f2$g > 0.5 ] )
+
+ff = sparsevb::svb.fit(d$genotypes, d$y., family="linear")
 
 # compute the posterior mean and the intercept
 ff$beta = ff$mu * ff$g
 ff$intercept = mean(d.train$y - d.train$genotypes %*% ff$beta)
+
+
 
 # compute the held out MSE
 mse(d.test$y, d.test$genotypes %*% ff$beta + ff$intercept)

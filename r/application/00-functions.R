@@ -67,11 +67,16 @@ cat.res = function(true, pred, beta, groups)
     res = ROSE::accuracy.meas(true, pred)
     auc = ROSE::roc.curve(true, pred, plotit=F)
     msize = sum(nzero.groups(beta, groups))
+    taus = seq(0.01, 0.99, by=0.001)
+    tau = max(sapply(taus, function(tau) cor(true, pred > tau)))
 
-    cat(sprintf("%.3f & %.3f & %.3f & %.3f & %d \\\\\n",
-	res$precision, res$recall, 2 *res$F, auc$auc, msize))
+    ret = c(res$precision, res$recall, 2 *res$F, auc$auc, tau, msize)
 
-    invisible()
+    cat(sprintf("%.3f & %.3f & %.3f & %.3f & %.3f, %d \\\\\n",
+	res$precision, res$recall, 2 *res$F, auc$auc, tau, msize))
+
+    print(ret)
+    return(ret)
 }
 
 
