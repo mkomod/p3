@@ -252,3 +252,6 @@ TSWLatexianTemp*
 *.xopp~
 *.pbs.e*
 *.pbs.o*
+
+paper/*
+testing/*
