@@ -4,7 +4,7 @@ library(gsvb)
 source("00-functions.R")
 
 DGP <- read.env("DGP", 1:4)
-SIM <- read.env("SIM", 1)
+SIM <- read.env("SIM", 1:8)
 MET <- read.env("MET", 1:6)
 CORES <- read.env("CORES", 4)
 
