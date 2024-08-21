@@ -1,5 +1,5 @@
 #PBS -lwalltime=8:00:00
-#PBS -lselect=1:ncpus=100:mem=512gb
+#PBS -lselect=1:ncpus=100:mem=920gb
 
 module load anaconda3/personal
 source activate Renv
@@ -7,7 +7,7 @@ source activate Renv
 PROJ_DIR=$HOME/p3
 
 export CORES=100
-# export DGP=1
+# export MET=3
 # export SIM=1
 
 cd $PROJ_DIR/r/simulations
@@ -15,8 +15,17 @@ cd $PROJ_DIR/r/simulations
 # Rscript 01-0-simulations_gaussian.R > \
 #     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
 
-# Rscript 01-1-simulations_binomial.R > \
+# Rscript 01-1-simulations_gaussian.R > \
 #     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
 
-Rscript 01-1-simulations_poisson.R > \
+# Rscript 02-0-simulations_binomial.R > \
+#     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
+
+# Rscript 02-1-simulations_binomial.R > \
+#     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
+
+Rscript 03-0-simulations_poisson.R > \
     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
+
+# Rscript 03-1-simulations_poisson.R > \
+#     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
