@@ -45,9 +45,9 @@ m <- list(
     ),
     p=list(
 	list(family="poisson", lambda=1, a0=1, b0=p/g, diag_covariance=TRUE, 
-	     intercept=FALSE),
+	     intercept=FALSE, ordering=0),
 	list(family="poisson", lambda=1, a0=1, b0=p/g, diag_covariance=FALSE, 
-	     intercept=FALSE),
+	     intercept=FALSE, ordering=0),
 	list(family="poisson", lambda=1, a0=1, b0=p/g, 
 	     mcmc_samples=1e5, burnin=5e4, intercept=FALSE)
     )

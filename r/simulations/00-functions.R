@@ -33,22 +33,22 @@ library(mvtnorm)
 .dgp_return <- function(model, X, Xb, n, n.test, sig=1)
 {
     if (model == "gaussian") {	# LINEAR REG
-	y <- Xb + rnorm(n + n.test, 0, sd=sig)
+		y <- Xb + rnorm(n + n.test, 0, sd=sig)
     }
     if (model == "binomial") {      # LOGISTIC REG
-	probs <- 1/(1+exp(-Xb))
-	y <- rbinom(n + n.test, 1, probs)
+		probs <- 1/(1+exp(-Xb))
+		y <- rbinom(n + n.test, 1, probs)
     }
     if (model == "poisson") {	# POISSON REG
-	y <- rpois(n + n.test, lambda=exp(Xb))
+		y <- rpois(n + n.test, lambda=exp(Xb))
     }
 
     if (n.test == 0) {
-	return(list(y=y, X=X))
+		return(list(y=y, X=X))
     } else {
-	N <- n + n.test
-	return(list(y=y[1:n], X=X[1:n, ], 
-		    test=list(y=y[(n+1):N], X=X[(n+1):N, ])))
+		N <- n + n.test
+		return(list(y=y[1:n], X=X[1:n, ], 
+				test=list(y=y[(n+1):N], X=X[(n+1):N, ])))
     }
 }
 
@@ -63,10 +63,10 @@ dgp_diag <- function(n, p, gsize, s, bmax, pars, b=NULL, seed=1, sig=1, n.test=1
     corr <- pars[[2]]
 
     if (corr == 0) {
-	X <- matrix(rnorm(N * p), nrow=N)
+		X <- matrix(rnorm(N * p), nrow=N)
     } else {
-	S <- outer(1:p, 1:p, function(i, j) corr^abs(i - j))
-	X <- mvtnorm::rmvnorm(N, rep(0, p), sigma=S)
+		S <- outer(1:p, 1:p, function(i, j) corr^abs(i - j))
+		X <- mvtnorm::rmvnorm(N, rep(0, p), sigma=S)
     }
     
     j <- which(res$groups %in% res$active_groups)
@@ -175,7 +175,7 @@ m_gsvb <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100,
 		family=m_par$family, intercept=m_par$intercept, 
 		diag_covariance=m_par$diag_covariance, lambda=m_par$lambda,
 		a0=m_par$a0, b0=m_par$b0, tau_a0=m_par$a_t, tau_b0=m_par$b_t,
-		niter=2000, track_elbo=FALSE)
+		niter=2000, track_elbo=FALSE, ordering=m_par$ordering)
 	})
 
 	active_groups <- rep(0, length(unique(d$groups)))
