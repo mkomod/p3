@@ -24,8 +24,11 @@ cd $PROJ_DIR/r/simulations
 # Rscript 02-1-simulations_binomial.R > \
 #     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
 
-Rscript 03-0-simulations_poisson.R > \
-    /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
+# Rscript 03-0-simulations_poisson.R > \
+#     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
 
 # Rscript 03-1-simulations_poisson.R > \
 #     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
+
+Rscript 04-sensitivity.R >\
+    /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
