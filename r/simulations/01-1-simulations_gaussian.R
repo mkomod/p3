@@ -23,33 +23,33 @@ runs <- 100
 dg <- list(
     # data generation process (dgp)
     p=c(
-		dgp_diag,
-		dgp_diag,
-		dgp_block,
-		dgp_wishart
+	dgp_diag,
+	dgp_diag,
+	dgp_block,
+	dgp_wishart
     ),
     # settings for each process
     s=list(
-		list(model="gaussian", corr=0),
-		list(model="gaussian", corr=0.6),
-		list(model="gaussian", corr=0.6, block_size=50),
-		list(model="gaussian", dof=3, weight=0.9)
+	list(model="gaussian", corr=0),
+	list(model="gaussian", corr=0.6),
+	list(model="gaussian", corr=0.6, block_size=50),
+	list(model="gaussian", dof=3, weight=0.9)
     )
 )
 
 m <- list(
     # methods
     m=c(
-		m_gsvb,  # GSVB (ours) 
-		m_gsvb,  # GSVB (ours, with non-diagonal covariance)
-		m_ssgl   # SSGL (SpSL Group LASSO)
+	m_gsvb,  # GSVB (ours) 
+	m_gsvb,  # GSVB (ours, with non-diagonal covariance)
+	m_ssgl   # SSGL (SpSL Group LASSO)
     ),
     p=list(
-		list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, 
-			 diag_covariance=TRUE, intercept=TRUE, ordering=0),
-		list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, 
-			 diag_covariance=FALSE, intercept=TRUE, ordering=0),
-		list(family="gaussian", l0=100, l1=1, a0=1, b0=p/g)
+	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, 
+	     diag_covariance=TRUE, intercept=TRUE, ordering=0),
+	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3, 
+	     diag_covariance=FALSE, intercept=TRUE, ordering=0),
+	list(family="gaussian", l0=100, l1=1, a0=1, b0=p/g)
     )
 )
 
