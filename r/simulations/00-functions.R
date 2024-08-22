@@ -149,7 +149,9 @@ m_run <- function(method, method_par, setting_par, CORES)
     e$method_summary <- method_summary
     e$method_coverage <- method_coverage
     e$method_post_pred <- method_post_pred
-    
+	e$debias_ssgl <- debias_ssgl
+	e$ssgl_credible_intervals <- ssgl_credible_intervals
+
     # init cluster
     cl <- parallel::makeCluster(getOption("cl.cores", CORES), outfile="")
     parallel::clusterExport(cl, ls(e, all.names=TRUE), envir=e)
@@ -281,16 +283,27 @@ m_spsl <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100,
 
 m_ssgl <- function(d, m_par=list(family="gaussian", l0=20, l1=1, a0=1, b0=100)) 
 {
-    tryCatch({
-	fit.time <- system.time({
-	    fit <- sparseGAM::SSGL(d$y, d$X, d$X, d$groups, family=m_par$family,
-		lambda0=m_par$l0, lambda1=m_par$l1, a=m_par$a0, b=m_par$b0)
-	})
+    tryCatch(
+	{
+		fit.time <- system.time({
+			fit <- sparseGAM::SSGL(d$y, d$X, d$X, d$groups, family=m_par$family,
+			lambda0=m_par$l0, lambda1=m_par$l1, a=m_par$a0, b=m_par$b0)
+			if (m_par$family == "gaussian") {
+				fit <- debias_ssgl(d, fit)
+			}
+		})
 
-	active_groups <- rep(0, length(unique(d$groups)))
-	active_groups[d$active_groups] <- 1
-	res <- method_summary(d$b, active_groups, fit$beta, fit$classifications, 0.5)
-	return(c(unlist(res), unlist(fit.time[3])))
+		active_groups <- rep(0, length(unique(d$groups)))
+		active_groups[d$active_groups] <- 1
+		res <- method_summary(d$b, active_groups, fit$beta, fit$classifications, 0.5)
+
+		if (m_par$family == "gaussian") {
+			coverage.beta <- method_coverage(d, fit, "ssgl", prob = 0.95)
+			return(c(unlist(res), unlist(fit.time[3]), unlist(coverage.beta)))
+		}
+
+		return(c(unlist(res), unlist(fit.time[3])))
+
     }, error=function(e) 
     {
 	cat("error in run: ", d$seed)
@@ -380,11 +393,15 @@ method_post_pred <- function(d, fit, method, quantiles=c(0.025, 0.975),
 method_coverage <- function(d, fit, method, prob=0.95)
 {
     if (method == "spsl") {
-	ci <- spsl::spsl.credible_intervals(fit, prob=prob)
+		ci <- spsl::spsl.credible_intervals(fit, prob=prob)
     }
     if (method == "gsvb") {
-	ci <- gsvb::gsvb.credible_intervals(fit, prob=prob)
+		ci <- gsvb::gsvb.credible_intervals(fit, prob=prob)
     }
+	if (method == "ssgl")
+	{
+		ci <- ssgl_credible_intervals(fit, prob=prob)
+	}
 
     l <- ci[ , 1]
     u <- ci[ , 2]
@@ -395,10 +412,10 @@ method_coverage <- function(d, fit, method, prob=0.95)
     bs <- b != 0
 
     return(list(
-	coverage.non_zero = mean(coverage[bs]),
-	length.non_zero = mean(u[bs] - l[bs]),
-	coverage.zero = mean(coverage[!bs]),
-	length.zero =  mean(u[!bs] - l[!bs])
+		coverage.non_zero = mean(coverage[bs]),
+		length.non_zero = mean(u[bs] - l[bs]),
+		coverage.zero = mean(coverage[!bs]),
+		length.zero =  mean(u[!bs] - l[!bs])
     ))
 }
 
@@ -412,3 +429,55 @@ read.env <- function(evar, default)
     if(Sys.getenv(evar) != "") as(Sys.getenv(evar), class(default)) else default
 }
 
+
+
+# ----------------------------------------
+# Debiased SSGl
+# ----------------------------------------
+debias_ssgl = function(d, fit)
+{     
+    n = dim(d$X)[1]
+    p = dim(d$X)[2]
+
+    cf = matrix(NA, p, p)
+    t  = rep(0, p)
+    S = (t(d$X) %*% d$X) / n
+
+    for (j in 1:p)
+    {
+        cvmod = glmnet::cv.glmnet(x = d$X[,-j], y = d$X[,j], intercept=FALSE)
+        mod = glmnet::glmnet(x = d$X[,-j], y = d$X[,j], lambda=cvmod$lambda.1se, intercept=FALSE)
+
+        cf[j, j] = 1
+        cf[j,-j] = as.numeric(-mod$beta)
+        t[j] = (1 / n) * (sum((d$X[ , j] - (d$X[ , -j] %*% mod$beta))**2)) + 0.5 * cvmod$lambda.1se*((sum(abs(cf[j,]))) - 1)
+    }
+
+    theta = diag( diag(cf) / t)
+    debiased = fit$beta + theta %*% t(d$X) %*% (d$y - (d$X %*% fit$beta))/n
+    fit$sigmasq = sum((d$y - d$X %*% fit$beta - fit$beta0)**2)/(n-2)
+
+    ## asymptotic variance of debiased lasso
+    varBeta =  fit$sigmasq * (theta %*% S %*% t(theta)) / n
+    fit$s = sqrt(diag(varBeta))
+    fit$dirac = 1 - fit$classifications[d$groups]
+    fit$parameters$intercept = FALSE
+    fit$debiased = debiased
+        
+    return(fit)
+}
+
+
+ssgl_credible_intervals = function(fit, prob=0.95)
+{
+    z = qnorm(1 - (1 - prob) / 2)
+    ci_low = fit$debiased - z * fit$s
+    ci_up = fit$debiased + z * fit$s
+
+    ci = matrix(NA, nrow=length(ci_low), ncol=3) 
+    ci[, 1] = ci_low
+    ci[, 2] = ci_up
+    ci[, 3] = fit$dirac
+    
+    return(ci)
+}
