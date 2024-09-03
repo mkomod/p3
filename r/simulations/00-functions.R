@@ -177,8 +177,9 @@ m_gsvb <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100,
 		family=m_par$family, intercept=m_par$intercept, 
 		diag_covariance=m_par$diag_covariance, lambda=m_par$lambda,
 		a0=m_par$a0, b0=m_par$b0, tau_a0=m_par$a_t, tau_b0=m_par$b_t,
-		niter=2000, track_elbo=FALSE, ordering=m_par$ordering)
+		niter=2000, track_elbo=FALSE, ordering=m_par$ordering, init_method=m_par$init_method)
 	})
+
 
 	active_groups <- rep(0, length(unique(d$groups)))
 	active_groups[d$active_groups] <- 1

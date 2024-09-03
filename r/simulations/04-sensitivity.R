@@ -4,7 +4,7 @@ library(gsvb)
 source("00-functions.R")
 
 DGP <- read.env("DGP", 1:4)
-SIM <- read.env("SIM", 1:8)
+SIM <- read.env("SIM", 1)
 MET <- read.env("MET", 1:6)
 CORES <- read.env("CORES", 4)
 
@@ -47,17 +47,30 @@ m <- list(
     ),
     p=list(
         list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
-             diag_covariance=TRUE, intercept=TRUE, ordering=0),
+             diag_covariance=TRUE, intercept=TRUE, ordering=0, init_method="lasso"),
         list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
-             diag_covariance=FALSE, intercept=TRUE, ordering=0),
+             diag_covariance=FALSE, intercept=TRUE, ordering=0, init_method="lasso"),
         list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
-             diag_covariance=TRUE, intercept=TRUE, ordering=1),
+             diag_covariance=TRUE, intercept=TRUE, ordering=1, init_method="lasso"),
         list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
-             diag_covariance=FALSE, intercept=TRUE, ordering=1),
+             diag_covariance=FALSE, intercept=TRUE, ordering=1, init_method="lasso"),
         list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
-             diag_covariance=TRUE, intercept=TRUE, ordering=2),
+             diag_covariance=TRUE, intercept=TRUE, ordering=2, init_method="lasso"),
         list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
-             diag_covariance=FALSE, intercept=TRUE, ordering=2)
+             diag_covariance=FALSE, intercept=TRUE, ordering=2, init_method="lasso"),
+        # random init   
+        list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+             diag_covariance=TRUE, intercept=TRUE, ordering=0, init_method="random"),
+        list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+             diag_covariance=FALSE, intercept=TRUE, ordering=0, init_method="random"),
+        list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+             diag_covariance=TRUE, intercept=TRUE, ordering=1, init_method="random"),
+        list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+             diag_covariance=FALSE, intercept=TRUE, ordering=1, init_method="random"),
+        list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+             diag_covariance=TRUE, intercept=TRUE, ordering=2, init_method="random"),
+        list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+             diag_covariance=FALSE, intercept=TRUE, ordering=2, init_method="random")
     )
 )
 

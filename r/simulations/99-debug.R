@@ -355,7 +355,8 @@ d$test
 # ----------------------------------------
 # testing method_post_pred
 # ----------------------------------------
-d <- dgp_block(200, 1000, 5, 3, list(corr=0.6, block_size=50), seed=91)
+d <- dgp_block(200, 1000, 5, 3,list(corr=0.6, block_size=50), seed=91)
+dgp_block()
 
 m_par <- list(lambda=1, a0=1, b0=200, a_t=1e-3, b_t=1e-3, diag_covariance=TRUE)
 f <- m_gsvb(d, m_par=m_par)
@@ -491,3 +492,23 @@ points(d$b, pch=20)
 
 matplot(t(f$B[1:10,]), type="l")
 
+setwd("./r/simulations")
+source("./00-functions.R")
+d <- dgp_diag(200, 1000, 10, 10, 1.5, list(model="gaussian", corr=0), seed=1)
+p = 1000 
+g = 200
+m_par = list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+    diag_covariance=TRUE, intercept=TRUE, ordering=0, init_method="lasso")
+    
+m_par = list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+    diag_covariance=TRUE, intercept=TRUE, ordering=0, init_method="random")
+
+m_par = list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+    diag_covariance=TRUE, intercept=TRUE, ordering=0)
+
+ff = m_gsvb(d, m_par)
+
+f = gsvb::gsvb.fit(d$y, d$X, d$groups,
+diag_covariance = TRUE, intercept = TRUE, ordering=0)
+
+plot(f$mu)
