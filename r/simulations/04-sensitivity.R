@@ -38,12 +38,18 @@ dg <- list(
 m <- list(
     # methods
     m=c(
-        m_gsvb,  # GSVB (ours) 
-        m_gsvb,  # GSVB (ours, with non-diagonal covariance)
-        m_gsvb,  # GSVB (ours, with non-diagonal covariance)
-        m_gsvb,  # GSVB (ours, with non-diagonal covariance)
-        m_gsvb,  # GSVB (ours, with non-diagonal covariance)
-        m_gsvb  # GSVB (ours, with non-diagonal covariance)
+        m_gsvb,  
+        m_gsvb,  
+        m_gsvb,  
+        m_gsvb,  
+        m_gsvb,  
+        m_gsvb,
+        m_gsvb,  
+        m_gsvb,  
+        m_gsvb,  
+        m_gsvb,  
+        m_gsvb,  
+        m_gsvb   
     ),
     p=list(
         list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
