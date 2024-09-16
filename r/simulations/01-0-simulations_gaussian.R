@@ -1,11 +1,12 @@
 library(spsl)
 library(gsvb)
+library(sparseGAM)                      # install.packages("sparseGAM")
 
 source("00-functions.R")
 
 DGP <- read.env("DGP", 1:4)
 SIM <- read.env("SIM", 1)
-MET <- read.env("MET", 1:3)
+MET <- read.env("MET", 4)
 CORES <- read.env("CORES", 1)
 
 # ----------------------------------------
@@ -40,7 +41,8 @@ m <- list(
     m=c(
 	m_gsvb,  # GSVB (ours) 
 	m_gsvb,  # GSVB (ours, with non-diagonal covariance)
-	m_spsl   # SpSL (mcmc)
+	m_spsl,  # SpSL (mcmc)
+	m_ssgl,  # SpSL (mcmc)
     ),
     p=list(
 	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
@@ -48,7 +50,8 @@ m <- list(
 	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
 	     diag_covariance=FALSE, intercept=TRUE, ordering=0),
 	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
-	     mcmc_samples=1e5, burnin=5e4, intercept=TRUE)
+	     mcmc_samples=1e5, burnin=5e4, intercept=TRUE),
+	list(family="gaussian", l0=100, l1=1, a0=1, b0=p/g)
     )
 )
 
