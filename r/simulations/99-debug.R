@@ -501,7 +501,7 @@ m_par = list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
     diag_covariance=TRUE, intercept=TRUE, ordering=0, init_method="lasso")
     
 m_par = list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
-    diag_covariance=TRUE, intercept=TRUE, ordering=0, init_method="random")
+    diag_covariance=TRUE, intercept=TRUE, ordering=0, init_method="ridge")
 
 m_par = list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
     diag_covariance=TRUE, intercept=TRUE, ordering=0)

@@ -5,7 +5,7 @@ source("00-functions.R")
 
 DGP <- read.env("DGP", 1:4)
 SIM <- read.env("SIM", 1)
-MET <- read.env("MET", 1:12)
+MET <- read.env("MET", 13:18)
 CORES <- read.env("CORES", 4)
 
 # ----------------------------------------
@@ -49,6 +49,12 @@ m <- list(
         m_gsvb,  
         m_gsvb,  
         m_gsvb,  
+        m_gsvb,
+        m_gsvb,  
+        m_gsvb,  
+        m_gsvb,  
+        m_gsvb,  
+        m_gsvb,  
         m_gsvb   
     ),
     p=list(
@@ -65,6 +71,19 @@ m <- list(
         list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
              diag_covariance=FALSE, intercept=TRUE, ordering=2, init_method="lasso"),
         # random init   
+        list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+             diag_covariance=TRUE, intercept=TRUE, ordering=0, init_method="random"),
+        list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+             diag_covariance=FALSE, intercept=TRUE, ordering=0, init_method="random"),
+        list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+             diag_covariance=TRUE, intercept=TRUE, ordering=1, init_method="random"),
+        list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+             diag_covariance=FALSE, intercept=TRUE, ordering=1, init_method="random"),
+        list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+             diag_covariance=TRUE, intercept=TRUE, ordering=2, init_method="random"),
+        list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+             diag_covariance=FALSE, intercept=TRUE, ordering=2, init_method="random"),
+       # ridge init     
         list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
              diag_covariance=TRUE, intercept=TRUE, ordering=0, init_method="random"),
         list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
@@ -99,22 +118,22 @@ for (i in DGP)
 
 
 
-# n <- c(200, 200, 200, 200)
-# p <- c(1e3, 1e3, 1e3, 1e3)
-# g <- c(5,   5,   10,  10 )
-# s <- c(5,   10,  5,   10 )
-# dat <- get_data("gaussian/ordering", 
-# 		1:6, 
-# 		n, p, g, s,
-# 		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero", "elapsed"),
-# 		dgp=c(1, 2), # 1:4
-# 		simnum=1, 
-# 		make.table=T,
-# 		make.plot=F,
-# 		# fname="../figs/gaus_mcmc_1.pdf",
-# 		max_psrf=3.50,
-# 		method.names=c("GSVB-D", "GSVB-B", "MCMC"),
-# 		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
-# 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
-# 			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
-# 			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")))
+n <- c(200, 200, 200, 200)
+p <- c(1e3, 1e3, 1e3, 1e3)
+g <- c(5,   5,   10,  10 )
+s <- c(5,   10,  5,   10 )
+dat <- get_data("gaussian/ordering", 
+		1:12, 
+		n, p, g, s,
+		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero", "elapsed"),
+		dgp=c(1, 2, 3, 4), # 1:4
+		simnum=2, 
+		make.table=T,
+		make.plot=F,
+		# fname="../figs/gaus_mcmc_1.pdf",
+		max_psrf=3.50,
+		method.names=c("GSVB-D", "GSVB-B", "MCMC"),
+		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
+		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
+			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
+			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")))
