@@ -272,15 +272,16 @@ s <- c(5,   10,  5,   10 )
 dat <- get_data("gaussian/mcmc", 
 		1:4, 
 		n, p, g, s,
-		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero", "elapsed"),
+		# metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero", "elapsed"),
+		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
 		dgp=c(1, 2, 3, 4),
 		simnum=1:2, 
 		make.table=T,
-		make.plot=F,
+		make.plot=T,
 		# fname="../figs/gaus_mcmc_1.pdf",
 		max_psrf=3.50,
 		method.names=c("GSVB-D", "GSVB-B", "MCMC", "SSGL"),
-		method.cols=adjustcolor(color_palette[c(1,2,4, 3)], 0.5),
+		method.cols=adjustcolor(color_palette[c(1,2,4,3)], 0.5),
 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
 			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
 			       latex2exp::TeX("Length $\\beta_0 \\neq 0$")))
@@ -506,3 +507,31 @@ dat <- get_data("gaussian/comp",
 load(file=sprintf("../../rdata/simulations/%s/%d_%d_%d.RData", 
 		  "gaussian/comp", 1, 8, 3))
 x = get(sprintf("1_8_3"))
+
+
+
+
+
+# ------------------------------------------------------------------------------
+# 			 			Sensitivity
+# ------------------------------------------------------------------------------
+#       1    2    3    4   5    6     7    8   
+n <- c(200, 200, 200, 200, 200, 200, 100,  200) 
+p <- c(1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 200,  200) 
+g <- c(5,   5,   10,  10 , 1,   1  , 1   , 1)   
+s <- c(5,   10,  5,   10 , 5,   10 , 20  , 20)  
+dat <- get_data("gaussian/ordering", 
+		seq(2, 18, 2), 
+		n, p, g, s,
+		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero", "elapsed"),
+		dgp=c(1, 2, 3, 4),
+		simnum=4, 
+		make.table=T,
+		make.plot=F,
+		# fname="../figs/gaus_mcmc_1.pdf",
+		max_psrf=3.50,
+		method.names=c("GSVB-D", "GSVB-B", "MCMC"),
+		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
+		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
+			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
+			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")))
