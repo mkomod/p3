@@ -31,7 +31,7 @@ library(gsvb)
 DGP <- read.env("DGP", 1:4)
 SIM <- read.env("SIM", 1)
 MET <- read.env("MET", 1:2)
-CORES <- read.env("CORES", 4)
+CORES <- read.env("CORES", 25)
 
 # ----------------------------------------
 # Simulation settings
