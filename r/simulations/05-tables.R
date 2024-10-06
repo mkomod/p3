@@ -20,7 +20,7 @@ proc_time <- function(e)
 get_data <- function(family, methods, n, p, g, s, metrics,
     dgp=1:4, simnums=1:length(n), make.table=FALSE, make.plot=TRUE,
     metric.title=metrics, method.names=NULL, method.cols=methods+1,
-    fname="", max_psrf=1.1) 
+    fname="", max_psrf=1.1, vertical=FALSE) 
 {
     cnames <- list() 
     for (i in methods) {
@@ -103,10 +103,19 @@ get_data <- function(family, methods, n, p, g, s, metrics,
     if (make.plot) 
     {
 	if (fname != "") {
-	    pdf(fname, width=3.8*length(metrics), height=2.8*length(simnums))
+		if (vertical) {
+			pdf(fname, width=2.8*length(metrics), height=2.8*length(metrics))
+		} else {
+			pdf(fname, width=3.8*length(metrics), height=2.8*length(simnums))
+		}
 	}
+	if (vertical) {
+	layout(t(matrix(1:(length(metrics) * length(simnums)), 
+		      ncol=length(metrics), byrow=T)))
+	} else {
 	layout(matrix(1:(length(metrics) * length(simnums)), 
 		      ncol=length(metrics), byrow=T))
+	}
 	for (sim in simnums)
 	{
 	    nn <- n[sim]; pp <- p[sim]; gg <- g[sim]; ss <- s[sim]
@@ -162,9 +171,9 @@ get_data <- function(family, methods, n, p, g, s, metrics,
 		# it
 		att = aggregate(f, ddat, function(x) sum(is.na(x)), na.action=NULL)
 		attx = 1:nrow(att)
-		attx[which(att[ , 3] >= 95)] = -5
-		if (any(att[ , 3]  == 100)) {
-		    for (ai in which(att[ , 3] == 100)) {
+		attx[which(att[ , 3] >= 90)] = -5
+		if (any(att[ , 3]  >= 90)) {
+		    for (ai in which(att[ , 3] >= 90)) {
 			ddat[(100 * ai - 100) : (100 * ai), 7:ncol(ddat)] = -5
 		     }
 		}
@@ -277,8 +286,8 @@ dat <- get_data("gaussian/mcmc",
 		dgp=c(1, 2, 3, 4),
 		simnum=1:2, 
 		make.table=T,
-		make.plot=T,
-		# fname="../figs/gaus_mcmc_1.pdf",
+		make.plot=F,
+		# fname="../figs/gaus_mcmc_1_up.pdf",
 		max_psrf=3.50,
 		method.names=c("GSVB-D", "GSVB-B", "MCMC", "SSGL"),
 		method.cols=adjustcolor(color_palette[c(1,2,4,3)], 0.5),
@@ -520,18 +529,30 @@ n <- c(200, 200, 200, 200, 200, 200, 100,  200)
 p <- c(1e3, 1e3, 1e3, 1e3, 1e3, 1e3, 200,  200) 
 g <- c(5,   5,   10,  10 , 1,   1  , 1   , 1)   
 s <- c(5,   10,  5,   10 , 5,   10 , 20  , 20)  
+# used Sim 2 / 4 / 7  in paper
+color_palette = rep(c("#4DAF4A", "#E41A1C", "#377EB8"), each=3)
+
+
+color_palette = c("#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00")
+
 dat <- get_data("gaussian/ordering", 
+		# seq(1, 18, 2),
 		seq(2, 18, 2), 
 		n, p, g, s,
-		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero", "elapsed"),
+		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
 		dgp=c(1, 2, 3, 4),
-		simnum=4, 
+		simnum=4,
 		make.table=T,
-		make.plot=F,
-		# fname="../figs/gaus_mcmc_1.pdf",
+		make.plot=T,
+		fname="../figs/sen_2.pdf",
 		max_psrf=3.50,
-		method.names=c("GSVB-D", "GSVB-B", "MCMC"),
-		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
+		method.names=c("Sequentail", "Random", "Magnitude",
+					   "Sequentail", "Random", "Magnitude",
+					   "Sequentail", "Random", "Magnitude"
+		),
+		# method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
+		method.cols=adjustcolor(color_palette, 0.5),
 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
 			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
-			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")))
+			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")),
+		vertical=TRUE)
