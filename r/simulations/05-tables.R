@@ -178,7 +178,7 @@ get_data <- function(family, methods, n, p, g, s, metrics,
 		     }
 		}
 
-		
+		print(ddat)	
 		# create the plot
 		vioplot::vioplot(f, data=ddat, add=TRUE, wex=0.7,
 		    col=method.cols, las=1, lwd=0.5, at=attx,
@@ -282,12 +282,13 @@ dat <- get_data("gaussian/mcmc",
 		1:4, 
 		n, p, g, s,
 		# metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero", "elapsed"),
-		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
+		# metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
+		metrics=c("l2", "elapsed"),
 		dgp=c(1, 2, 3, 4),
 		simnum=1:2, 
 		make.table=T,
 		make.plot=F,
-		# fname="../figs/gaus_mcmc_1_up.pdf",
+		fname="../figs/gaus_mcmc_1_up.pdf",
 		max_psrf=3.50,
 		method.names=c("GSVB-D", "GSVB-B", "MCMC", "SSGL"),
 		method.cols=adjustcolor(color_palette[c(1,2,4,3)], 0.5),
@@ -531,28 +532,81 @@ g <- c(5,   5,   10,  10 , 1,   1  , 1   , 1)
 s <- c(5,   10,  5,   10 , 5,   10 , 20  , 20)  
 # used Sim 2 / 4 / 7  in paper
 color_palette = rep(c("#4DAF4A", "#E41A1C", "#377EB8"), each=3)
+# color_palette = c("#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00")
 
-
-color_palette = c("#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00")
-
+for (i in 1:3) {
+j = c(2, 4, 7)[i]	
 dat <- get_data("gaussian/ordering", 
-		# seq(1, 18, 2),
-		seq(2, 18, 2), 
+		seq(1, 18, 2),
+		# seq(2, 18, 2), 
 		n, p, g, s,
-		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
+		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero", "elapsed"),
 		dgp=c(1, 2, 3, 4),
-		simnum=4,
+		simnum=j,
 		make.table=T,
 		make.plot=T,
-		fname="../figs/sen_2.pdf",
+		fname=sprintf("../figs/sen_%d.pdf", i),
 		max_psrf=3.50,
-		method.names=c("Sequentail", "Random", "Magnitude",
-					   "Sequentail", "Random", "Magnitude",
-					   "Sequentail", "Random", "Magnitude"
+		method.names=c("Sequential", "Random", "Magnitude",
+					   "Sequential", "Random", "Magnitude",
+					   "Sequential", "Random", "Magnitude"
 		),
 		# method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
 		method.cols=adjustcolor(color_palette, 0.5),
 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
 			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
-			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$")),
+			       latex2exp::TeX("Length $\\beta_0 \\neq 0$"),
+			       "Elapsed (s)"),
 		vertical=TRUE)
+}
+
+
+for (i in 1:3) {
+j = c(2, 4, 7)[i]	
+
+color_palette = c("#4DAF4A", "#E41A1C", "#FF7F00")
+# "#377EB8")
+
+dat <- get_data("gaussian/ordering", 
+		# c(2, 4, 6),
+		# c(6, 12, 18),
+		c(18, 12, 6),
+		n, p, g, s,
+		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), # "elapsed"),
+		dgp=c(1, 2, 3, 4),
+		# simnum=c(2, 4, 7),
+		simnum=7,
+		make.table=T,
+		make.plot=T,
+		# fname=sprintf("../figs/sen_%d.pdf", i),
+		max_psrf=3.50,
+		method.names=c("Random", "Ridge", "Group LASSO"),
+		method.cols=adjustcolor(color_palette, 0.5),
+		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
+			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
+			       latex2exp::TeX("Length $\\beta_0 \\neq 0$")
+			       ),
+		vertical=FALSE)
+
+
+
+dat <- get_data("gaussian/ordering", 
+		c(2,4,6),
+		n, p, g, s,
+		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), # "elapsed"),
+		dgp=c(1, 2, 3, 4),
+		# simnum=c(2,4,7),
+		simnum=7,
+		make.table=T,
+		make.plot=T,
+		# fname=sprintf("../figs/sen_%d.pdf", i),
+		max_psrf=3.50,
+		method.names=c("Sequential", "Random", "Magnitude"),
+		method.cols=adjustcolor(color_palette, 0.5),
+		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
+			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
+			       latex2exp::TeX("Length $\\beta_0 \\neq 0$")),
+		vertical=FALSE)
+
+
+}

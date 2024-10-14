@@ -47,11 +47,11 @@ m <- list(
     ),
     p=list(
 	list(family="binomial-jensens",  lambda=1, a0=1, b0=p/g,
-	     diag_covariance=TRUE, intercept=TRUE, ordering=0),
+	     diag_covariance=TRUE, intercept=TRUE, ordering=2),
 	list(family="binomial-jaakkola", lambda=1, a0=1, b0=p/g,
-	     diag_covariance=TRUE, intercept=TRUE, ordering=0),
+	     diag_covariance=TRUE, intercept=TRUE, ordering=2),
 	list(family="binomial-jaakkola", lambda=1, a0=1, b0=p/g,
-	     diag_covariance=FALSE, intercept=TRUE, ordering=0),
+	     diag_covariance=FALSE, intercept=TRUE, ordering=2),
 	list(family="binomial", lambda=1, a0=1, b0=p/g, 
 	     mcmc_samples=1e5, burnin=5e4, intercept=TRUE)
     )
