@@ -6,7 +6,7 @@ source("00-functions.R")
 
 DGP <- read.env("DGP", 1:4)
 SIM <- read.env("SIM", 1)
-MET <- read.env("MET", 4)
+MET <- read.env("MET", 1:2)
 CORES <- read.env("CORES", 1)
 
 # ----------------------------------------
@@ -46,9 +46,9 @@ m <- list(
     ),
     p=list(
 	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
-	     diag_covariance=TRUE, intercept=TRUE, ordering=0),
+	     diag_covariance=TRUE, intercept=TRUE, ordering=2),
 	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
-	     diag_covariance=FALSE, intercept=TRUE, ordering=0),
+	     diag_covariance=FALSE, intercept=TRUE, ordering=2),
 	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
 	     mcmc_samples=1e5, burnin=5e4, intercept=TRUE),
 	list(family="gaussian", l0=20, l1=1, a0=1, b0=p/g)
