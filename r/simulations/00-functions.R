@@ -213,7 +213,7 @@ m_gsvb <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100,
 
 
 m_spsl <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100, 
-    a_t=1e-3, b_t=1e-3, mcmc_samples=10e3, burnin=5e3, intercept=TRUE))
+    a_t=1e-3, b_t=1e-3, mcmc_samples=50e3, burnin=25e3, intercept=TRUE))
 {
     tryCatch({
 	fit.time <- system.time({
