@@ -67,8 +67,14 @@ get_data <- function(family, methods, n, p, g, s, metrics,
 		    x = cbind(x, tobind)
 		}
 
-		if ("max_psrf" %in% colnames(x)) {
-		    tokeep = x[, "max_psrf"] <= max_psrf
+		# if ("max_psrf" %in% colnames(x)) {
+		#     tokeep = x[, "max_psrf"] <= max_psrf
+		#     cat(dtype, " - ", sim, " : ", sum(!tokeep), "\n")
+		#     x[!tokeep, metrics] = NA
+		# }
+
+		if ("mpsrf" %in% colnames(x)) {
+		    tokeep = x[, "mpsrf"] <= max_psrf
 		    cat(dtype, " - ", sim, " : ", sum(!tokeep), "\n")
 		    x[!tokeep, metrics] = NA
 		}
@@ -142,7 +148,6 @@ get_data <- function(family, methods, n, p, g, s, metrics,
 		    rng = range(ddat[ , met], na.rm=T)
 		    rng[1] = 0
 		} else if (met == "auc") {
-		    # rng = range(ddat[ , met], na.rm=T)
 		    rng = c(0.3, 1)
 		} else {
 		    rng = range(ddat[ , met], na.rm=T)
@@ -171,14 +176,13 @@ get_data <- function(family, methods, n, p, g, s, metrics,
 		# it
 		att = aggregate(f, ddat, function(x) sum(is.na(x)), na.action=NULL)
 		attx = 1:nrow(att)
-		attx[which(att[ , 3] >= 90)] = -5
-		if (any(att[ , 3]  >= 90)) {
-		    for (ai in which(att[ , 3] >= 90)) {
-			ddat[(100 * ai - 100) : (100 * ai), 7:ncol(ddat)] = -5
+		attx[which(att[ , 3] >= 50)] = -5
+		if (any(att[ , 3]  >= 50)) {
+		    for (ai in which(att[ , 3] >= 50)) {
+			ddat[(100 * ai - 99) : (100 * ai), 7:ncol(ddat)] = -5
 		     }
 		}
 
-		print(ddat)	
 		# create the plot
 		vioplot::vioplot(f, data=ddat, add=TRUE, wex=0.7,
 		    col=method.cols, las=1, lwd=0.5, at=attx,
@@ -199,9 +203,9 @@ get_data <- function(family, methods, n, p, g, s, metrics,
 		axis(2, at=pretty(rng), las=1, lwd=0, lwd.ticks=0.2)
 
 		# add did not run cross
-		if (any(att[ , 3] > 90)) {
-		    points(which(att[ , 3] >= 90), 
-			   rep(min(rng), length(which(att[ , 3] >= 90))),
+		if (any(att[ , 3] >= 50)) {
+		    points(which(att[ , 3] >= 50), 
+			   rep(min(rng), length(which(att[ , 3] >= 50))),
 			pch=4, col="red", cex=2.5)
 		}
 	    }
@@ -227,21 +231,6 @@ p <- c(5e3, 5e3, 5e3, 5e3, 5e3, 5e3)
 g <- c( 10,  10,  10,  10,  10,  10)
 s <- c( 10,  10,  10,  20,  20,  20)
 color_palette = c("#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00")
-
-# dat <- get_data("gaussian/comp", 
-# 		1:3, 
-# 		n, p, g, s,
-# 		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), 
-# 		dgp=1:4, 
-# 		simnum=c(1,2,5,6), 
-# 		make.table=FALSE,
-# 		method.names=c("GSVB-D", "GSVB-B", "SSGL"),
-# 		method.cols=adjustcolor(color_palette[1:3], 0.5),
-# 		# fname="../figs/gaus_comp_1.pdf",
-# 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
-# 			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
-# 			       latex2exp::TeX("Lenght $\\beta_0 \\neq 0$"))
-# )
 
 
 dat <- get_data("gaussian/comp", 
@@ -274,6 +263,32 @@ dat <- get_data("gaussian/comp",
 
 
 
+color_palette = c("#4DAF4A", "#E41A1C", "#FF7F00", "#377EB8")
+n <- c(200, 200, 200, 200)
+p <- c(1e3, 1e3, 1e3, 1e3)
+g <- c(5,   5,   10,  10 )
+s <- c(5,   10,  5,   10 )
+dat <- get_data("gaussian/mcmc", 
+		1:4, 
+		n, p, g, s,
+		# metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero", "elapsed"),
+		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
+		# metrics=c("l2", "elapsed"),
+		dgp=c(1, 2, 3, 4),
+		simnum=1:2, 
+		make.table=T,
+		# make.plot=F,
+		fname="../figs/gaus_mcmc_1_up.pdf",
+		max_psrf=2.0,
+		method.names=c("GSVB-D", "GSVB-B", "MCMC", "SSGL"),
+		method.cols=adjustcolor(color_palette[c(1,2,3,4)], 0.5),
+		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
+			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
+			       latex2exp::TeX("Length $\\beta_0 \\neq 0$")))
+
+
+
+color_palette = c("#4DAF4A", "#E41A1C", "#FF7F00", "#377EB8")
 n <- c(200, 200, 200, 200)
 p <- c(1e3, 1e3, 1e3, 1e3)
 g <- c(5,   5,   10,  10 )
@@ -283,15 +298,15 @@ dat <- get_data("gaussian/mcmc",
 		n, p, g, s,
 		# metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero", "elapsed"),
 		# metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
-		metrics=c("l2", "elapsed"),
+		metrics=c("elapsed", "elapsed"),
 		dgp=c(1, 2, 3, 4),
 		simnum=1:2, 
 		make.table=T,
-		make.plot=F,
-		fname="../figs/gaus_mcmc_1_up.pdf",
-		max_psrf=3.50,
+		make.plot=T,
+		# fname="../figs/gaus_mcmc_1_up.pdf",
+		max_psrf=3.5,
 		method.names=c("GSVB-D", "GSVB-B", "MCMC", "SSGL"),
-		method.cols=adjustcolor(color_palette[c(1,2,4,3)], 0.5),
+		method.cols=adjustcolor(color_palette[c(1,2,3,4)], 0.5),
 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
 			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
 			       latex2exp::TeX("Length $\\beta_0 \\neq 0$")))
@@ -356,10 +371,10 @@ dat <- get_data("binomial/mcmc",
 		dgp=2:4, 
 		simnum=2,
 		make.table=FALSE,
-		fname="../figs/binom_mcmc_1.pdf",
+		# fname="../figs/binom_mcmc_1.pdf",
 		method.names=c("GSVB-D-J", "GSVB-B", "GSVB-D", "MCMC"),
 		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
-		max_psrf=3.50,
+		max_psrf=1.1,
 		metric.title=c("", "", "")
 		# metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
 		#     latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"),
@@ -439,8 +454,8 @@ dat <- get_data("poisson/mcmc",
 		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), 
 		dgp=1:4, 
 		simnum=1,
-		max_psrf=5.00,
-		fname="../figs/pois_mcmc_1.pdf",
+		max_psrf=2.0,
+		# fname="../figs/pois_mcmc_1.pdf",
 		method.names=c("GSVB-D", "GSVB-D", "MCMC"),
 		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
 		metric.title=c("", "", "", ""),
@@ -534,53 +549,21 @@ s <- c(5,   10,  5,   10 , 5,   10 , 20  , 20)
 color_palette = rep(c("#4DAF4A", "#E41A1C", "#377EB8"), each=3)
 # color_palette = c("#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00")
 
-for (i in 1:3) {
-j = c(2, 4, 7)[i]	
-dat <- get_data("gaussian/ordering", 
-		seq(1, 18, 2),
-		# seq(2, 18, 2), 
-		n, p, g, s,
-		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero", "elapsed"),
-		dgp=c(1, 2, 3, 4),
-		simnum=j,
-		make.table=T,
-		make.plot=T,
-		fname=sprintf("../figs/sen_%d.pdf", i),
-		max_psrf=3.50,
-		method.names=c("Sequential", "Random", "Magnitude",
-					   "Sequential", "Random", "Magnitude",
-					   "Sequential", "Random", "Magnitude"
-		),
-		# method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
-		method.cols=adjustcolor(color_palette, 0.5),
-		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
-			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
-			       latex2exp::TeX("Length $\\beta_0 \\neq 0$"),
-			       "Elapsed (s)"),
-		vertical=TRUE)
-}
-
 
 for (i in 1:3) {
 j = c(2, 4, 7)[i]	
 
-color_palette = c("#4DAF4A", "#E41A1C", "#FF7F00")
-# "#377EB8")
-
+color_palette = rev(c("#4DAF4A", "#E41A1C", "#FF7F00"))
 dat <- get_data("gaussian/ordering", 
-		# c(2, 4, 6),
-		# c(6, 12, 18),
-		c(18, 12, 6),
+		c(6, 12, 18),
 		n, p, g, s,
-		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), # "elapsed"),
-		dgp=c(1, 2, 3, 4),
-		# simnum=c(2, 4, 7),
-		simnum=7,
+		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
+		dgp=1:4,
+		simnum=4,
 		make.table=T,
 		make.plot=T,
-		# fname=sprintf("../figs/sen_%d.pdf", i),
-		max_psrf=3.50,
-		method.names=c("Random", "Ridge", "Group LASSO"),
+		fname=sprintf("../figs/sen_init_%d.pdf", i),
+		method.names=c("Grp-LASSO", "Random", "Ridge"),
 		method.cols=adjustcolor(color_palette, 0.5),
 		metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
 			       latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"), 
@@ -589,17 +572,16 @@ dat <- get_data("gaussian/ordering",
 		vertical=FALSE)
 
 
-
+color_palette = c("#4DAF4A", "#E41A1C", "#FF7F00")
 dat <- get_data("gaussian/ordering", 
 		c(2,4,6),
 		n, p, g, s,
-		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), # "elapsed"),
-		dgp=c(1, 2, 3, 4),
-		# simnum=c(2,4,7),
-		simnum=7,
+		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
+		dgp=1:4,
+		simnum=j,
 		make.table=T,
 		make.plot=T,
-		# fname=sprintf("../figs/sen_%d.pdf", i),
+		fname=sprintf("../figs/sen_order_%d.pdf", i),
 		max_psrf=3.50,
 		method.names=c("Sequential", "Random", "Magnitude"),
 		method.cols=adjustcolor(color_palette, 0.5),
@@ -608,5 +590,6 @@ dat <- get_data("gaussian/ordering",
 			       latex2exp::TeX("Length $\\beta_0 \\neq 0$")),
 		vertical=FALSE)
 
-
 }
+
+
