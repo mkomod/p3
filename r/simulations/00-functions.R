@@ -159,9 +159,9 @@ m_run <- function(method, method_par, setting_par, CORES)
     
     # run the method
     res <- parallel::parSapply(cl, 1:runs, function(run) {
-	cat(run, "\t")
-	d <- dgp(n, p, g, s, bmax, pars, seed=run)
-	method(d, method_par)
+		cat(run, "\t")
+		d <- dgp(n, p, g, s, bmax, pars, seed=run)
+		method(d, method_par)
     })
 
     return(t(res))
