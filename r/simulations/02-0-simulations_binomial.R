@@ -53,7 +53,7 @@ m <- list(
 	list(family="binomial-jaakkola", lambda=1, a0=1, b0=p/g,
 	     diag_covariance=FALSE, intercept=TRUE, ordering=2),
 	list(family="binomial", lambda=1, a0=1, b0=p/g, 
-	     mcmc_samples=25e4, burnin=1e4, intercept=TRUE)
+	     mcmc_samples=1e5, burnin=1e4, intercept=TRUE)
     )
 )
 
