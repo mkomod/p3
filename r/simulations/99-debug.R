@@ -487,6 +487,14 @@ d <- dgp_diag(400, 1000, 5, 3, 0.45, list(model="poisson", corr=0), seed=79)
 f = spsl::spsl.fit(d$y, d$X, d$groups, family="poisson", intercept=FALSE,
     mcmc_samples=100000, burnin=50000)
 
+f = spsl::spsl.fit(d$y, d$X, d$groups)
+f$B * 
+
+
+f$B * f$Z[f$parameters$groups, ]
+
+
+
 plot(f$beta_hat)
 points(d$b, pch=20)
 
@@ -512,3 +520,83 @@ f = gsvb::gsvb.fit(d$y, d$X, d$groups,
 diag_covariance = TRUE, intercept = TRUE, ordering=0)
 
 plot(f$mu)
+
+
+p = 1000 
+g = 200
+# m_par <- list(family="gaussian", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, 
+# 	      b_t=1e-3, mcmc_samples=1e3, burnin=0, intercept=TRUE)
+setwd("./r/simulations")
+source("./00-functions.R")
+
+d <- dgp_diag(400, 100, 5, 3, bmax=1.0, list(model="binomial", corr=0.6), seed=1)
+
+hist(d$y)
+d$y
+# these are good!
+kernel_param_1=0.05, kernel_param_2=10
+# these 
+
+# these are good for poisson
+kernel_param_1=0.025, kernel_param_2=20
+
+f0 = spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", mcmc_samples = 1.5e4, burnin = 5e3, kernel_param_1=0.12, kernel_param_2=9)
+f1 = spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", mcmc_samples = 1.5e4, burnin = 5e3, kernel_param_1=0.12, kernel_param_2=9)
+f2 = spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", mcmc_samples = 1.5e4, burnin = 5e3, kernel_param_1=0.12, kernel_param_2=9)
+f3 = spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", mcmc_samples = 1.5e4, burnin = 5e3, kernel_param_1=0.12, kernel_param_2=9)
+
+l = coda::mcmc.list(
+coda::mcmc(t(f0$B # * f0$Z[f0$parameters$groups, ]	
+)),
+coda::mcmc(t(f1$B # * f1$Z[f1$parameters$groups, ]	
+)),
+coda::mcmc(t(f2$B # * f2$Z[f2$parameters$groups, ]	
+)),
+coda::mcmc(t(f3$B # * f3$Z[f3$parameters$groups, ]	
+)))
+
+gg = coda::gelman.diag(l, multivariate = TRUE)
+quantile(gg$psrf[,2], 0.95, na.rm=TRUE)
+gg$mpsrf
+# hist(gg$psrf[1, ])
+
+f0$g
+d$active_groups
+which(f0$parameters$groups == (d$active_groups + 1)[2])
+
+plot(f0$g)
+sum(f0$g > 0.5)
+plot(f0$beta_hat)
+
+plot(f0$beta_hat)
+points(f1$beta_hat, col="red")
+points(f2$beta_hat, col="green")
+points(f3$beta_hat, col="blue")
+
+f0$g
+plot(f0$B[10, ], type="l")
+plot(f0$B[1, ], type="l")
+plot(f0$B[2, ], type="l")
+plot(f0$B[3, ], type="l")
+plot(f0$B[4, ], type="l")
+plot(f0$B[2, ], type="l")
+
+d$active_groups
+
+colSums(fit$Z) 
+# gg$mpsrf
+# hist(gg$psrf[ , 1])
+# gg$mpsrf
+
+matplot( t(f3$B * f3$Z[f3$parameters$groups, ] ), type="l")
+plot(f3$B[78, ], type="l")
+
+library(coda)
+gg = my.gelman.diag(l)
+
+chol(gg$W)
+
+
+min(eigen(gg$W, only.values = TRUE)$values)
+
+matrixNormal::is.positive.definite(gg$W, tol = 1e-18)

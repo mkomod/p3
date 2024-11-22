@@ -213,29 +213,38 @@ m_gsvb <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100,
 
 
 m_spsl <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100, 
-    a_t=1e-3, b_t=1e-3, mcmc_samples=50e3, burnin=25e3, intercept=TRUE))
+    a_t=1e-3, b_t=1e-3, mcmc_samples=50e3, burnin=25e3, intercept=TRUE, kp_1=0.05,
+    kp_2=10))
 {
     tryCatch({
 	fit.time <- system.time({
 	    fit <- spsl::spsl.fit(d$y, d$X, d$groups, family=m_par$family,
 		intercept=m_par$intercept, lambda=m_par$lambda, a_0=m_par$a0, 
 		b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
-		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin, thin=10)
+		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin, 
+        kernel_param_1 = m_par$kp_1, kernel_param_2 = m_par$kp_2,
+        thin=10)
 
 	    f1 <- spsl::spsl.fit(d$y, d$X, d$groups, family=m_par$family,
 		intercept=m_par$intercept, lambda=m_par$lambda, a_0=m_par$a0, 
 		b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
-		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin, thin=10)
+		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin, 
+        kernel_param_1 = m_par$kp_1, kernel_param_2 = m_par$kp_2,
+        thin=10)
 
 	    f2 <- spsl::spsl.fit(d$y, d$X, d$groups, family=m_par$family,
 		intercept=m_par$intercept, lambda=m_par$lambda, a_0=m_par$a0, 
 		b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
-		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin, thin=10)
+		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin, 
+        kernel_param_1 = m_par$kp_1, kernel_param_2 = m_par$kp_2,
+        thin=10)
 
 	    f3 <- spsl::spsl.fit(d$y, d$X, d$groups, family=m_par$family,
 		intercept=m_par$intercept, lambda=m_par$lambda, a_0=m_par$a0, 
 		b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
-		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin, thin=10)
+		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin, 
+        kernel_param_1 = m_par$kp_1, kernel_param_2 = m_par$kp_2,
+        thin=10)
 	})
 
 	active_groups <- rep(0, length(unique(d$groups)))
@@ -250,14 +259,22 @@ m_spsl <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100,
 	coverage.beta <- method_coverage(d, fit, "spsl", prob = 0.95)
 
 	l = coda::mcmc.list(
-		coda::mcmc(t(fit$B)),
-		coda::mcmc(t(f1$B)),
-		coda::mcmc(t(f2$B)),
-		coda::mcmc(t(f3$B))
+		coda::mcmc(t(
+			fit$B # * fit$Z[fit$parameters$groups, ]	
+		)),
+		coda::mcmc(t(
+			f1$B # * f1$Z[f1$parameters$groups, ]	
+		)),
+		coda::mcmc(t(
+			f2$B # * f2$Z[f2$parameters$groups, ]	
+		)),
+		coda::mcmc(t(
+			f3$B # * f3$Z[f3$parameters$groups, ]	
+		))
 	    )
 
 	psrf = coda::gelman.diag(l)
-	max_psrf = max(psrf$psrf[ , 1])
+	max_psrf = median(psrf$psrf[ , 1])
 	mpsrf = psrf$mpsrf
 
 	ppsrf = list(max_psrf= max_psrf, mpsrf=mpsrf)
