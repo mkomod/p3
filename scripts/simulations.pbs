@@ -1,7 +1,8 @@
 #PBS -lwalltime=8:00:00
 #PBS -lselect=1:ncpus=100:mem=920gb
 
-module load anaconda3/personal
+eval "$(~/anaconda3/bin/conda shell.bash hook)"
+# module load anaconda3/personal
 source activate Renv
 
 PROJ_DIR=$HOME/p3

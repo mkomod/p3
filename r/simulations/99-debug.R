@@ -530,6 +530,15 @@ setwd("./r/simulations")
 source("./00-functions.R")
 
 d <- dgp_diag(400, 100, 5, 3, bmax=1.0, list(model="binomial", corr=0.6), seed=1)
+p = 100
+g = 5
+m_par = list(family="binomial", lambda=1, a0=1, b0=100/5, 
+     mcmc_samples=5e5, burnin=1e5, intercept=TRUE, kp_1=0.15, kp_2=9)
+
+list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
+     mcmc_samples=5e5, burnin=1e5, intercept=TRUE, kp_1=0.05, kp_2=10)
+
+m_spsl(d, m_par)
 
 hist(d$y)
 d$y
@@ -540,10 +549,10 @@ kernel_param_1=0.05, kernel_param_2=10
 # these are good for poisson
 kernel_param_1=0.025, kernel_param_2=20
 
-f0 = spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", mcmc_samples = 1.5e4, burnin = 5e3, kernel_param_1=0.12, kernel_param_2=9)
-f1 = spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", mcmc_samples = 1.5e4, burnin = 5e3, kernel_param_1=0.12, kernel_param_2=9)
-f2 = spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", mcmc_samples = 1.5e4, burnin = 5e3, kernel_param_1=0.12, kernel_param_2=9)
-f3 = spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", mcmc_samples = 1.5e4, burnin = 5e3, kernel_param_1=0.12, kernel_param_2=9)
+f0 = spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", mcmc_samples = 1.5e4, burnin = 5e3, kernel_param_1=0.2, kernel_param_2=9)
+f1 = spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", mcmc_samples = 1.5e4, burnin = 5e3, kernel_param_1=0.2, kernel_param_2=9)
+f2 = spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", mcmc_samples = 1.5e4, burnin = 5e3, kernel_param_1=0.2, kernel_param_2=9)
+f3 = spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", mcmc_samples = 1.5e4, burnin = 5e3, kernel_param_1=0.2, kernel_param_2=9)
 
 l = coda::mcmc.list(
 coda::mcmc(t(f0$B # * f0$Z[f0$parameters$groups, ]	
