@@ -1,8 +1,8 @@
-#PBS -lwalltime=8:00:00
-#PBS -lselect=1:ncpus=100:mem=920gb
+#PBS -lwalltime=08:00:00
+#PBS -lselect=1:ncpus=100:mem=2000gb
 
-eval "$(~/anaconda3/bin/conda shell.bash hook)"
-# module load anaconda3/personal
+# eval "$(~/anaconda3/bin/conda shell.bash hook)"
+module load anaconda3/personal
 source activate Renv
 
 PROJ_DIR=$HOME/p3
@@ -13,8 +13,8 @@ export CORES=100
 
 cd $PROJ_DIR/r/simulations
 
-Rscript 01-0-simulations_gaussian.R > \
-    /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
+# Rscript 01-0-simulations_gaussian.R > \
+#     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
 
 # Rscript 01-1-simulations_gaussian.R > \
 #     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
@@ -25,8 +25,8 @@ Rscript 01-0-simulations_gaussian.R > \
 # Rscript 02-1-simulations_binomial.R > \
 #     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
 
-# Rscript 03-0-simulations_poisson.R > \
-#     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
+Rscript 03-0-simulations_poisson.R > \
+    /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
 
 # Rscript 03-1-simulations_poisson.R > \
 #     /rds/general/user/mk1019/ephemeral/$(date +%y%m%d_%H%M)_$DGP_$SIM
