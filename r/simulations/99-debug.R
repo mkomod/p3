@@ -529,25 +529,127 @@ g = 200
 setwd("./r/simulations")
 source("./00-functions.R")
 
-d <- dgp_diag(400, 100, 5, 3, bmax=1.0, list(model="binomial", corr=0.6), seed=1)
-p = 100
-g = 5
-m_par = list(family="binomial", lambda=1, a0=1, b0=100/5, 
-     mcmc_samples=5e5, burnin=1e5, intercept=TRUE, kp_1=0.15, kp_2=9)
 
-list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
-     mcmc_samples=5e5, burnin=1e5, intercept=TRUE, kp_1=0.05, kp_2=10)
 
-m_spsl(d, m_par)
+# =============================================================================
+#
+#                               GAUSSIAN
+#
+# =============================================================================
+library(ParBayesianOptimization)
 
-hist(d$y)
-d$y
-# these are good!
+# Define the objective function for Bayesian Optimization
+objective_function <- function(k1, k2) {
+    seed = sample(1:100, 1)
+  d <- dgp_diag(200, 1000, 5, 5, bmax=1.5, list(model="gaussian", corr=0.6), seed=seed)
+  
+  # Fit the model with the given kernel parameters
+  f0 <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", mcmc_samples=1.5e4, burnin=1e3, kernel_param_1=k1, kernel_param_2=k2)
+  f1 <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", mcmc_samples=1.5e4, burnin=1e3, kernel_param_1=k1, kernel_param_2=k2)
+  f2 <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", mcmc_samples=1.5e4, burnin=1e3, kernel_param_1=k1, kernel_param_2=k2)
+  f3 <- spsl::spsl.fit(d$y, d$X, d$groups, family="gaussian", mcmc_samples=1.5e4, burnin=1e3, kernel_param_1=k1, kernel_param_2=k2)
+  
+  # Create MCMC list
+  l <- coda::mcmc.list(
+    coda::mcmc(t(f0$B)),
+    coda::mcmc(t(f1$B)),
+    coda::mcmc(t(f2$B)),
+    coda::mcmc(t(f3$B))
+  )
+  
+  # Calculate Gelman-Rubin diagnostic
+  tryCatch({
+    gg <- coda::gelman.diag(l, multivariate=TRUE)
+    
+    # Return the multivariate potential scale reduction factor (mpsrf) as the objective
+    return(list(Score = -gg$mpsrf))  # Negative because we want to minimize mpsrf
+  }, error = function(e) {
+    cat("Error in calculating Gelman-Rubin diagnostic: ", e$message, "\n")
+    return(list(Score = -500))
+  })
+}
+
+# Run Bayesian Optimization
+opt_results <- bayesOpt(
+  FUN = objective_function,
+  bounds = list(k1 = c(0.05, 0.2), k2 = c(10, 25)),
+  initPoints = 5,
+  iters.n = 15,
+  acq = "ei"
+)
+
+# Print the optimal parameters
+opt_results$scoreSummary
+ParBayesianOptimization::getBestPars(opt_results)
+
+objective_function(0.15, 19.5)
+
+
+
 kernel_param_1=0.05, kernel_param_2=10
 # these 
-
 # these are good for poisson
 kernel_param_1=0.025, kernel_param_2=20
+
+
+
+
+
+# =============================================================================
+#
+#                               POISSON
+#
+# =============================================================================
+objective_function <- function(k1, k2) {
+  seed = sample(1:100, 1)
+  d <- dgp_diag(400, 1000, 5, 2, bmax=0.45, list(model="poisson", corr=0.6), seed=seed)
+  
+  # Fit the model with the given kernel parameters
+  f0 <- spsl::spsl.fit(d$y, d$X, d$groups, family="poisson", mcmc_samples=1.5e4, burnin=1e3, kernel_param_1=k1, kernel_param_2=k2)
+  f1 <- spsl::spsl.fit(d$y, d$X, d$groups, family="poisson", mcmc_samples=1.5e4, burnin=1e3, kernel_param_1=k1, kernel_param_2=k2)
+  f2 <- spsl::spsl.fit(d$y, d$X, d$groups, family="poisson", mcmc_samples=1.5e4, burnin=1e3, kernel_param_1=k1, kernel_param_2=k2)
+  f3 <- spsl::spsl.fit(d$y, d$X, d$groups, family="poisson", mcmc_samples=1.5e4, burnin=1e3, kernel_param_1=k1, kernel_param_2=k2)
+  
+  # Create MCMC list
+  l <- coda::mcmc.list(
+    coda::mcmc(t(f0$B)),
+    coda::mcmc(t(f1$B)),
+    coda::mcmc(t(f2$B)),
+    coda::mcmc(t(f3$B))
+  )
+  
+  # Calculate Gelman-Rubin diagnostic
+  tryCatch({
+    gg <- coda::gelman.diag(l, multivariate=TRUE)
+    
+    # Return the multivariate potential scale reduction factor (mpsrf) as the objective
+    return(list(Score = -gg$mpsrf))  # Negative because we want to minimize mpsrf
+  }, error = function(e) {
+    cat("Error in calculating Gelman-Rubin diagnostic: ", e$message, "\n")
+    return(list(Score = -500))
+  })
+}
+
+opt_results_pois <- bayesOpt(
+  FUN = objective_function,
+  bounds = list(k1 = c(0.01, 0.1), k2 = c(15, 25)),
+  initPoints = 5,
+  iters.n = 20,
+  acq = "ei"
+)
+
+# Print the optimal parameters
+opt_results_pois$scoreSummary
+ParBayesianOptimization::getBestPars(opt_results_pois)
+
+
+
+
+# =============================================================================
+#
+#                               MISC
+#
+# =============================================================================
 
 f0 = spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", mcmc_samples = 1.5e4, burnin = 5e3, kernel_param_1=0.2, kernel_param_2=9)
 f1 = spsl::spsl.fit(d$y, d$X, d$groups, family="binomial", mcmc_samples = 1.5e4, burnin = 5e3, kernel_param_1=0.2, kernel_param_2=9)
@@ -609,3 +711,5 @@ chol(gg$W)
 min(eigen(gg$W, only.values = TRUE)$values)
 
 matrixNormal::is.positive.definite(gg$W, tol = 1e-18)
+
+
