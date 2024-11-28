@@ -1,0 +1,12 @@
+#PBS -lwalltime=08:00:00
+#PBS -lselect=1:ncpus=16:mem=64gb
+
+# eval "$(~/anaconda3/bin/conda shell.bash hook)"
+module load anaconda3/personal
+source activate Renv
+
+PROJ_DIR=$HOME/p3
+
+
+cd $PROJ_DIR/r/application
+Rscript 01-rat-gene-expression.R

@@ -246,7 +246,7 @@ for (fold in 1:folds)
 
 
 # Note: we use the exact same mechanism of perfroming X-validation as SSGL
-# the following takes a while to run
+# the following takes a while to run ~ 12 hours
 # Cross-validation loop to find the optimal value of lambda0 for SSGL
 lambda0_values <- seq(0.1, 10, by=0.5)
 cv_results <- matrix(NA, nrow=length(lambda0_values), ncol=10)
@@ -272,14 +272,15 @@ for (i in seq_along(lambda0_values)) {
 }
 
 # Calculate the mean MSE for each lambda0 value
-mean_mse <- apply(cv_results, 1, mean, na.rm=TRUE)
+mean_mse <- rowMeans(cv_results)
+which.min(mean_mse)
 
 # Find the optimal lambda0 value
 optimal_lambda0 <- lambda0_values[which.min(mean_mse)]
-
 cat("Optimal lambda0 value: ", optimal_lambda0, "\n")
 
-
+# this was the optimal value of lambda0 from xval
+lambda0 = 1.6
 
 # extract the results for the mse minimizing lambda0
 # note: ssglcv does not provide the models, just the param
@@ -300,7 +301,7 @@ for (fold in 1:10)
 
     # standardization happens inside SSGL
     f.s = SSGL::SSGL(d.train$y, d.train$X, d.train$groups, family="gaussian",
-		     d.test$X, lambda0=6.00)
+		     d.test$X, lambda0=lambda0)
 
     ssgl_models[[fold]] = f.s
 
@@ -310,8 +311,10 @@ for (fold in 1:10)
     ssgl_results[2, fold] = sum(f.s$classifications)
 }
 
+# rowMeans(ssgl_results)
+
 # save the models
-save(list=c("models", "ssglcv", "ssgl_models"), 
+save(list=c("models", "ssgl_models"), 
      file="../../rdata/application/rat/models_15k.RData")
 
 # save the results
