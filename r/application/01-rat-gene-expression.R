@@ -13,7 +13,8 @@ library(splines)
 library(data.table)
 library(SSGL)
 library(foreach)
-library(doParallel)
+library(data.table)
+# library(doParallel)
 
 source("./00-functions.R")
 
@@ -62,28 +63,34 @@ gene_name_table = AnnotationDbi::select(rat2302.db, row_names,
 	c("SYMBOL","ENTREZID", "GENENAME"))
 gene_name_table = gene_name_table[!duplicated(gene_name_table$PROBEID), ]
 
+X = t(X)
 
 # -------------------------------------------------------------------------------
 # 				Splines setup
 # -------------------------------------------------------------------------------
-X = t(X)
-p = ncol(X)
-n = nrow(X)
+create_train_test = function(y, X, tr, ts)
+{
+    p = ncol(X)
+    n_tr = length(tr)
+    n_ts = length(ts)
 
-m = 3 	# basis expansion size
-Z = matrix(NA, nrow=n, ncol=m * p)
+    m = 3 	# basis expansion size
+    Z_tr = matrix(NA, nrow=n_tr, ncol=m * p)
+    Z_ts = matrix(NA, nrow=n_ts, ncol=m * p)
 
-for (j in 1:p)
-    Z[ , m * (j - 1) + 1:m]  = ns(X[, j], df=m)
+    for (j in 1:p) {
+        basis = splines::ns(X[tr, j], df=m)
+        Z_tr[ , m * (j - 1) + 1:m]  = basis
+        Z_ts[ , m * (j - 1) + 1:m]  = predict(basis, X[ts, j]) 
+    }
 
+    # Package dataset
+    d = list(y_train=y[tr], X_train=Z_tr, y_test=y[ts], X_test=Z_ts, 
+             groups=rep(1:p, each=m), n=n_tr, M=p, m=m, p=ncol(Z_tr))
+}
 
-# Package dataset
-d = list(y=Y, X=Z, groups=rep(1:p, each=m), 
-	 n=n, M=p, m=m, p=ncol(Z))
-	 
-rm(list=c("q25", "dat", "m", "X", "n", "X_var", "row_names", "col_names",
-	  "trim32_index", "Z", "keep", "Y"))
-
+rm(list=c("q25", "dat", "X_var", "row_names", "col_names",
+	  "trim32_index", "keep"))
 
 # -------------------------------------------------------------------------------
 # 		   Functions to produce a orthonormal design
@@ -175,14 +182,17 @@ models = list(diag_cov=list(), full_cov=list())
 # 
 # load("../../rdata/application/rat/models_15k.RData")
 #
+
 for (fold in 1:folds) 
 {
-    xval = cv(d$n, fold, folds=10, random_order=FALSE)
+    xval = cv(nrow(X), fold, folds=10, random_order=FALSE)
     
     tr = xval$train
     ts = xval$test
-    d.train = list(y=d$y[tr], X=d$X[tr, ], groups=d$groups)
-    d.test  = list(y=d$y[ts], X=d$X[ts, ], groups=d$groups)
+
+    d = create_train_test(Y, X, tr, ts)
+    d.train = list(y=d$y_train, X=d$X_train, groups=d$groups)
+    d.test  = list(y=d$y_test,  X=d$X_test,  groups=d$groups)
     
     # fit the model
     d.train = std(d.train)
@@ -195,17 +205,6 @@ for (fold in 1:folds)
     # save the models
     models$diag_cov[[fold]] = f1
     models$full_cov[[fold]] = f2 
-}
-
-
-for (fold in (1:10)) 
-{
-    xval = cv(d$n, fold, folds=10, random_order=FALSE)
-    tr = xval$train
-    ts = xval$test
-    d.train = list(y=d$y[tr], X=d$X[tr, ], groups=d$groups)
-    d.test  = list(y=d$y[ts], X=d$X[ts, ], groups=d$groups)
-    d.train = std(d.train)
 
     # get model
     f1 = rescale_fit(models$diag_cov[[fold]], d.train)
@@ -217,50 +216,69 @@ for (fold in (1:10))
     # evaluate the model
     results[1, fold, 1] = mse(d.test$y, 
 	    d.test$X %*% (f1$mu * (f1$g[d.train$groups] > 0.5)) + f1$intercept)
-	    # d.test$X %*% (f1$mu * (f1$g[d.train$groups] > 0.5)) + f1$intercept)
+
     results[1, fold, 2] = mse(d.test$y, 
 	    d.test$X %*% (f2$mu * (f2$g[d.train$groups] > 0.5)) + f2$intercept)
 
     results[2, fold, 1] = sum(f1$g > 0.5)
     results[2, fold, 2] = sum(f2$g > 0.5)
-}
 
-
-# compute the PP coverage
-for (fold in (1:10)) 
-{
-    xval = cv(d$n, fold, folds=10, random_order=FALSE)
-    tr = xval$train
-    ts = xval$test
-    d.train = list(y=d$y[tr], X=d$X[tr, ], groups=d$groups)
-    d.test  = list(y=d$y[ts], X=d$X[ts, ], groups=d$groups)
-    d.train = std(d.train)
-    
-    # get model
-    f1 = rescale_fit(models$diag_cov[[fold]], d.train)
-    f2 = rescale_fit(models$full_cov[[fold]], d.train)
-
+    # compute the PP coverage
     f1.pred = gsvb::gsvb.predict(f1, d.test$X)
+
     results[3, fold, 1] = 
-    mean(d.test$y - f1$intercept >= f1.pred$quantiles[1, ] & 
-	 d.test$y - f1$intercept <= f1.pred$quantiles[2, ])
+        mean(d.test$y - f1$intercept >= f1.pred$quantiles[1, ] & 
+         d.test$y - f1$intercept <= f1.pred$quantiles[2, ])
+
     results[4, fold, 1] = 
-	mean(abs(f1.pred$quantiles[2, ] - f1.pred$quantiles[1, ] ))
+        mean(abs(f1.pred$quantiles[2, ] - f1.pred$quantiles[1, ] ))
+
 
     f2.pred = gsvb::gsvb.predict(f2, d.test$X)
+
     results[3, fold, 2] = 
-	mean(d.test$y - f2$intercept >= f2.pred$quantiles[1, ] & 
-	 d.test$y - f2$intercept <= f2.pred$quantiles[2, ])
+        mean(d.test$y - f2$intercept >= f2.pred$quantiles[1, ] & 
+         d.test$y - f2$intercept <= f2.pred$quantiles[2, ])
+
     results[4, fold, 2] = 
-	mean(abs(f2.pred$quantiles[2, ] - f2.pred$quantiles[1, ] ))
+        mean(abs(f2.pred$quantiles[2, ] - f2.pred$quantiles[1, ] ))
 }
 
 
 # Note: we use the exact same mechanism of perfroming X-validation as SSGL
-# the following takes a LONG time to run ( > 2 days)
-lambda0seq = seq(1, 500, length.out=100)
-ssglcv = SSGL::cv_SSGL(d$y, d$X, d$groups, n_folds=10, lambda0=lambda0seq)
-# the min CV error is given by lambda0_min = 6.04
+# the following takes a while to run
+# Cross-validation loop to find the optimal value of lambda0 for SSGL
+lambda0_values <- seq(0.1, 10, by=0.5)
+cv_results <- matrix(NA, nrow=length(lambda0_values), ncol=10)
+
+for (i in seq_along(lambda0_values)) {
+    lambda0 <- lambda0_values[i]
+    
+    for (fold in 1:10) {
+        xval <- cv(nrow(X), fold, folds=10, random_order=FALSE)
+        tr <- xval$train
+        ts <- xval$test
+
+        d <- create_train_test(Y, X, tr, ts)
+        d.train <- list(y=d$y_train, X=d$X_train, groups=d$groups)
+        d.test  <- list(y=d$y_test, X=d$X_test, groups=d$groups)
+
+        # standardization happens inside SSGL
+        f.s <- SSGL::SSGL(d.train$y, d.train$X, d.train$groups, family="gaussian",
+                          d.test$X, lambda0=lambda0)
+
+        cv_results[i, fold] <- mse(d.test$y, f.s$Y_pred)
+    }
+}
+
+# Calculate the mean MSE for each lambda0 value
+mean_mse <- apply(cv_results, 1, mean, na.rm=TRUE)
+
+# Find the optimal lambda0 value
+optimal_lambda0 <- lambda0_values[which.min(mean_mse)]
+
+cat("Optimal lambda0 value: ", optimal_lambda0, "\n")
+
 
 
 # extract the results for the mse minimizing lambda0
@@ -272,22 +290,20 @@ ssgl_results = matrix(NA, nrow=2, ncol=10)
 
 for (fold in 1:10) 
 {
-    xval = cv(d$n, fold, folds=10, random_order=FALSE)
+    xval = cv(nrow(X), fold, folds=10, random_order=FALSE)
     tr = xval$train
     ts = xval$test
-    d.train = list(y=d$y[tr], X=d$X[tr, ], groups=d$groups)
-    d.test  = list(y=d$y[ts], X=d$X[ts, ], groups=d$groups)
 
-    # same standardization happens inside SSGL
+    d = create_train_test(Y, X, tr, ts)
+    d.train = list(y=d$y_train, X=d$X_train, groups=d$groups)
+    d.test  = list(y=d$y_test, X=d$X_test, groups=d$groups)
+
+    # standardization happens inside SSGL
     f.s = SSGL::SSGL(d.train$y, d.train$X, d.train$groups, family="gaussian",
-		     d.test$X, lambda0=6.04)
+		     d.test$X, lambda0=6.00)
 
     ssgl_models[[fold]] = f.s
 
-}
-
-for (fold in 1:10) 
-{
     f.s = ssgl_models[[fold]]
 
     ssgl_results[1, fold] = mse(d.test$y, f.s$Y_pred)
