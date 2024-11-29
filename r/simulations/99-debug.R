@@ -477,57 +477,29 @@ matplot(t(f$B[c(FALSE, !!d$b), ]), type="l")
 
 
 
-d <- dgp_diag(200, 1000, 10, 10, 1.5, list(model="gaussian", corr=0), seed=1)
+source("./00-functions.R")
 d <- dgp_diag(200, 1000, 5, 5, 1.5, list(model="gaussian", corr=0), seed=1)
-m_par <- list(family="gaussian", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, 
-	      b_t=1e-3, mcmc_samples=2e3, burnin=5e2, intercept=TRUE)
+m_par = list(family="gaussian", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, b_t=1e-3,
+	     mcmc_samples=1e4, burnin=1e3, intercept=TRUE, kp_1=0.10, kp_2=10.0)
 f <- m_spsl(d, m_par)
-
-d <- dgp_diag(400, 1000, 5, 3, 0.45, list(model="poisson", corr=0), seed=79)
-f = spsl::spsl.fit(d$y, d$X, d$groups, family="poisson", intercept=FALSE,
-    mcmc_samples=100000, burnin=50000)
-
-f = spsl::spsl.fit(d$y, d$X, d$groups)
-f$B * 
+f
 
 
-f$B * f$Z[f$parameters$groups, ]
+d <- dgp_diag(400, 1000, 5, 2, 0.45, list(model="poisson", corr=0), seed=1)
+m_par = list(family="poisson", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, b_t=1e-3,
+	     mcmc_samples=1e4, burnin=1e3, intercept=TRUE, kp_1=0.10, kp_2=25.0)
+f <- m_spsl(d, m_par)
+f
+
+
+d <- dgp_diag(400, 1000, 5, 3, 1.00, list(model="binomial", corr=0), seed=1)
+m_par = list(family="binomial", lambda=1, a0=1, b0=1000/5, 
+     mcmc_samples=1e4, burnin=1e3, intercept=TRUE, kp_1=0.15, kp_2=9)
+f <- m_spsl(d, m_par)
+f
 
 
 
-plot(f$beta_hat)
-points(d$b, pch=20)
-
-matplot(t(f$B[1:10,]), type="l")
-
-setwd("./r/simulations")
-source("./00-functions.R")
-d <- dgp_diag(200, 1000, 10, 10, 1.5, list(model="gaussian", corr=0), seed=1)
-p = 1000 
-g = 200
-m_par = list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
-    diag_covariance=TRUE, intercept=TRUE, ordering=0, init_method="lasso")
-    
-m_par = list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
-    diag_covariance=TRUE, intercept=TRUE, ordering=0, init_method="ridge")
-
-m_par = list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
-    diag_covariance=TRUE, intercept=TRUE, ordering=0)
-
-ff = m_gsvb(d, m_par)
-
-f = gsvb::gsvb.fit(d$y, d$X, d$groups,
-diag_covariance = TRUE, intercept = TRUE, ordering=0)
-
-plot(f$mu)
-
-
-p = 1000 
-g = 200
-# m_par <- list(family="gaussian", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, 
-# 	      b_t=1e-3, mcmc_samples=1e3, burnin=0, intercept=TRUE)
-setwd("./r/simulations")
-source("./00-functions.R")
 
 
 
