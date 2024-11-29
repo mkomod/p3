@@ -53,31 +53,63 @@ library(coda)
 #   })
 # }
 
+
+
+
+
+
+
+
 library(spsl)
 library(ParBayesianOptimization)
 library(coda)
+library(parallel)
 
-
+source("./00-functions.R")
 
 objective_function <- function(k1, k2) {
   seed = sample(1:100, 1)
-  d <- dgp_diag(400, 1000, 5, 2, 0.45, list(model="poisson", corr=0), seed=seed)
-  m_par = list(family="poisson", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, b_t=1e-3,
+  d <- dgp_diag(200, 1000, 5, 5, 1.50, list(model="gaussian", corr=0.6), seed=seed)
+  m_par = list(family="gaussian", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, b_t=1e-3,
          mcmc_samples=1e4, burnin=1e3, intercept=TRUE, kp_1=k1, kp_2=k2)
   f <- m_spsl(d, m_par)
-  return(list(Score = -f[length(f) - 1]))
+  return(-f[length(f) - 1])
 }
 
 
-opt_results_pois <- bayesOpt(
-  FUN = objective_function,
-  bounds = list(k1 = c(0.05, 0.15), k2 = c(10, 30)),
-  initPoints = 5,
-  iters.n = 5,
-  acq = "ei"
-)
 
-# Print the optimal parameters
-opt_results_pois$scoreSummary
-ParBayesianOptimization::getBestPars(opt_results_pois)
-# objective_function(0.13, 23)
+grid_search <- function(k1_values, k2_values) {
+  param_grid <- expand.grid(k1 = k1_values, k2 = k2_values)
+  
+  scores <- mclapply(1:nrow(param_grid), function(idx) {
+    k1 <- param_grid[idx, "k1"]
+    k2 <- param_grid[idx, "k2"]
+    score <- objective_function(k1, k2)
+    return(list(k1 = k1, k2 = k2, score = score))
+  }, mc.cores = 16)
+  
+  best_score <- -Inf
+  best_params <- list(k1 = NA, k2 = NA)
+  all_params <- list()
+  
+  for (result in scores) {
+    all_params <- append(all_params, list(result))
+    if (result$score > best_score) {
+      best_score <- result$score
+      best_params$k1 <- result$k1
+      best_params$k2 <- result$k2
+    }
+  }
+  
+  return(list(BestScore = best_score, BestParams = best_params, AllParams = all_params))
+}
+
+# Define the range of k1 and k2 values for the grid search
+k1_values <- seq(0.10, 0.25, by = 0.02)
+k2_values <- seq(8, 25, by = 2)
+
+length(k1_values) * length(k2_values)
+
+# Perform the grid search
+grid_search_results <- grid_search(k1_values, k2_values)
+print(grid_search_results)
