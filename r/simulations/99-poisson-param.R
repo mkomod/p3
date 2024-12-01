@@ -56,8 +56,17 @@ library(coda)
 
 
 
+d <- dgp_diag(400, 100, 5, 2, 0.45, list(model="poisson", corr=0.6), seed=1)
+m_par = list(family="poisson", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, b_t=1e-3,
+       mcmc_samples=2e4, burnin=1e4, intercept=FALSE, kp_1=k1, kp_2=k2)
+f <- m_spsl(d, m_par)
+f0 <- spsl::spsl.fit(d$y, d$X, d$groups, family="poisson", mcmc_samples=1.5e4, burnin=1e3, kernel_param_1=0.06, kernel_param_2=10)
+f1 <- spsl::spsl.fit(d$y, d$X, d$groups, family="poisson", mcmc_samples=1.5e4, burnin=1e3, kernel_param_1=k1, kernel_param_2=k2)
+f2 <- spsl::spsl.fit(d$y, d$X, d$groups, family="poisson", mcmc_samples=1.5e4, burnin=1e3, kernel_param_1=k1, kernel_param_2=k2)
+f3 <- spsl::spsl.fit(d$y, d$X, d$groups, family="poisson", mcmc_samples=1.5e4, burnin=1e3, kernel_param_1=k1, kernel_param_2=k2)
+#
 
-
+f0$B[ (f0$g > 0.5)[f0$parameters$groups], ] 
 
 
 library(spsl)
@@ -73,13 +82,14 @@ objective_function <- function(k1, k2) {
     seed = sample(1:100, 1)
     d <- dgp_diag(400, 1000, 5, 2, 0.45, list(model="poisson", corr=0.6), seed=seed)
     m_par = list(family="poisson", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, b_t=1e-3,
-           mcmc_samples=2e4, burnin=1e4, intercept=FALSE, kp_1=k1, kp_2=k2)
+           mcmc_samples=2e4, burnin=5e3, intercept=FALSE, kp_1=k1, kp_2=k2)
     f <- m_spsl(d, m_par)
     scores[i] <- -f[length(f) - 1]
   }
   return(mean(scores))
 }
 
+# objective_function(0.01, 20)
 
 
 grid_search <- function(k1_values, k2_values) {

@@ -276,18 +276,20 @@ m_spsl <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100,
 	psrf = coda::gelman.diag(l)
 	mpsrf = psrf$mpsrf
 
+	
+
 	l =	coda::mcmc.list(
 		coda::mcmc(t(
-			fit$B * fit$Z[fit$parameters$groups, ]	
+			fit$B[(fit$g > 0.1)[fit$parameters$groups] , ]	
 		)),
 		coda::mcmc(t(
-			f1$B * f1$Z[f1$parameters$groups, ]	
+			f1$B[(f1$g > 0.1)[f1$parameters$groups] , ]	
 		)),
 		coda::mcmc(t(
-			f2$B * f2$Z[f2$parameters$groups, ]	
+			f2$B[(f2$g > 0.1)[f2$parameters$groups] , ]	
 		)),
 		coda::mcmc(t(
-			f3$B * f3$Z[f3$parameters$groups, ]	
+			f2$B[(f2$g > 0.1)[f2$parameters$groups] , ]	
 		))
 	)
 	psrf = coda::gelman.diag(l, multivariate = FALSE)

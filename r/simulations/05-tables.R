@@ -67,17 +67,17 @@ get_data <- function(family, methods, n, p, g, s, metrics,
 		    x = cbind(x, tobind)
 		}
 
-		if ("max_psrf" %in% colnames(x)) {
-		    tokeep = x[, "max_psrf"] <= max_psrf
-		    cat(dtype, " - ", sim, " : ", sum(!tokeep), "\n")
-		    x[!tokeep, metrics] = NA
-		}
-
-		# if ("mpsrf" %in% colnames(x)) {
-		#     tokeep = x[, "mpsrf"] <= max_psrf
+		# if ("max_psrf" %in% colnames(x)) {
+		#     tokeep = x[, "max_psrf"] <= max_psrf
 		#     cat(dtype, " - ", sim, " : ", sum(!tokeep), "\n")
 		#     x[!tokeep, metrics] = NA
 		# }
+
+		if ("mpsrf" %in% colnames(x)) {
+		    tokeep = x[, "mpsrf"] <= max_psrf
+		    cat(dtype, " - ", sim, " : ", sum(!tokeep), "\n")
+		    x[!tokeep, metrics] = NA
+		}
 
 		tobind <- cbind(d=dtype, n=n[sim], p=p[sim], g=g[sim], 
 				s=s[sim], m=meth, x[ , metrics])
@@ -375,7 +375,7 @@ dat <- get_data("binomial/mcmc",
 		# fname="../figs/binom_mcmc_1.pdf",
 		method.names=c("GSVB-D-J", "GSVB-B", "GSVB-D", "MCMC"),
 		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
-		max_psrf=1.50,
+		max_psrf=1.10,
 		metric.title=c("", "", "")
 		# metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
 		#     latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"),
