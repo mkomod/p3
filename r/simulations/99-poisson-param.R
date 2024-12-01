@@ -68,12 +68,16 @@ library(parallel)
 source("./00-functions.R")
 
 objective_function <- function(k1, k2) {
-  seed = sample(1:100, 1)
-  d <- dgp_diag(200, 1000, 5, 5, 1.50, list(model="gaussian", corr=0.6), seed=seed)
-  m_par = list(family="gaussian", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, b_t=1e-3,
-         mcmc_samples=1e4, burnin=1e3, intercept=TRUE, kp_1=k1, kp_2=k2)
-  f <- m_spsl(d, m_par)
-  return(-f[length(f) - 1])
+  scores <- numeric(5)
+  for (i in 1:5) {
+    seed = sample(1:100, 1)
+    d <- dgp_diag(400, 1000, 5, 2, 0.45, list(model="poisson", corr=0.6), seed=seed)
+    m_par = list(family="poisson", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, b_t=1e-3,
+           mcmc_samples=2e4, burnin=1e4, intercept=FALSE, kp_1=k1, kp_2=k2)
+    f <- m_spsl(d, m_par)
+    scores[i] <- -f[length(f) - 1]
+  }
+  return(mean(scores))
 }
 
 
@@ -84,9 +88,10 @@ grid_search <- function(k1_values, k2_values) {
   scores <- mclapply(1:nrow(param_grid), function(idx) {
     k1 <- param_grid[idx, "k1"]
     k2 <- param_grid[idx, "k2"]
+    sprintf("%f %f", k1, k2)
     score <- objective_function(k1, k2)
     return(list(k1 = k1, k2 = k2, score = score))
-  }, mc.cores = 16)
+  }, mc.cores = 64)
   
   best_score <- -Inf
   best_params <- list(k1 = NA, k2 = NA)
@@ -105,11 +110,16 @@ grid_search <- function(k1_values, k2_values) {
 }
 
 # Define the range of k1 and k2 values for the grid search
-k1_values <- seq(0.10, 0.25, by = 0.02)
-k2_values <- seq(8, 25, by = 2)
+k1_values <- seq(0.005, 0.05, by = 0.005)
+k2_values <- seq(2, 10, by = 2)
 
 length(k1_values) * length(k2_values)
 
 # Perform the grid search
 grid_search_results <- grid_search(k1_values, k2_values)
+
 print(grid_search_results)
+# Find the largest score that is not Inf
+sapply(grid_search_results$AllParams, function(x) x$score) > -2
+
+grid_search_results$AllParams[[1]]

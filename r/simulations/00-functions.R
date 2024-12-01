@@ -223,28 +223,28 @@ m_spsl <- function(d, m_par=list(family="gaussian", lambda=0.5, a0=1, b0=100,
 		b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
 		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin, 
         kernel_param_1 = m_par$kp_1, kernel_param_2 = m_par$kp_2,
-        thin=10)
+        thin=5)
 
 	    f1 <- spsl::spsl.fit(d$y, d$X, d$groups, family=m_par$family,
 		intercept=m_par$intercept, lambda=m_par$lambda, a_0=m_par$a0, 
 		b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
 		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin, 
         kernel_param_1 = m_par$kp_1, kernel_param_2 = m_par$kp_2,
-        thin=10)
+        thin=5)
 
 	    f2 <- spsl::spsl.fit(d$y, d$X, d$groups, family=m_par$family,
 		intercept=m_par$intercept, lambda=m_par$lambda, a_0=m_par$a0, 
 		b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
 		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin, 
         kernel_param_1 = m_par$kp_1, kernel_param_2 = m_par$kp_2,
-        thin=10)
+        thin=5)
 
 	    f3 <- spsl::spsl.fit(d$y, d$X, d$groups, family=m_par$family,
 		intercept=m_par$intercept, lambda=m_par$lambda, a_0=m_par$a0, 
 		b_0=m_par$b0, a_t=m_par$a_t, b_t=m_par$b_t, 
 		mcmc_sample=m_par$mcmc_samples, burnin=m_par$burnin, 
         kernel_param_1 = m_par$kp_1, kernel_param_2 = m_par$kp_2,
-        thin=10)
+        thin=5)
 	})
 
 	active_groups <- rep(0, length(unique(d$groups)))

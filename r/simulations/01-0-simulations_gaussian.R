@@ -50,7 +50,7 @@ m <- list(
 	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
 	     diag_covariance=FALSE, intercept=TRUE, ordering=2),
 	list(family="gaussian", lambda=1, a0=1, b0=p/g + 1, a_t=1e-3, b_t=1e-3,
-	     mcmc_samples=5e5, burnin=1e5, intercept=TRUE, kp_1=0.10, kp_2=22.0),
+	     mcmc_samples=5e4, burnin=1e4, intercept=TRUE, kp_1=0.10, kp_2=10.0),
 	list(family="gaussian", l0=20, l1=1, a0=1, b0=p/g)
     )
 )
