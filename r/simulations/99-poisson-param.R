@@ -11,7 +11,7 @@ objective_function <- function(k1, k2) {
         seed = sample(1:100, 1)
         d <- dgp_diag(400, 1000, 5, 2, 0.45, list(model="poisson", corr=0.6), seed=seed)
         m_par = list(family="poisson", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, b_t=1e-3,
-               mcmc_samples=2e4, burnin=5e3, intercept=FALSE, kp_1=k1, kp_2=k2)
+               mcmc_samples=1e4, burnin=5e3, intercept=FALSE, kp_1=k1, kp_2=k2)
         f <- m_spsl(d, m_par)
         scores[i] <- -f[length(f) - 1]
     }, error = function(e) {
