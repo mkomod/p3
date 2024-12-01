@@ -49,7 +49,7 @@ m <- list(
 	list(family="poisson", lambda=1, a0=1, b0=p/g, diag_covariance=FALSE, 
 	     intercept=FALSE, ordering=0),
 	list(family="poisson", lambda=1, a0=1, b0=p/g, 
-	     mcmc_samples=5e4, burnin=1e4, intercept=FALSE, kp_1=0.025, kp_2=20)
+	     mcmc_samples=1e5, burnin=1e4, intercept=FALSE, kp_1=0.024, kp_2=20)
     )
 )
 
@@ -67,7 +67,6 @@ for (i in DGP)
     for (j in MET) {
 	rname <- sprintf("%d_%d_%d", i, SIM, j)
 	assign(rname, m_run(m$m[[j]], m$p[[j]], setting_parameters, CORES))
-	save(list=c(rname), file=sprintf("../../rdata/simulations/poisson/mcmc/%s.RData", rname))
+	# save(list=c(rname), file=sprintf("../../rdata/simulations/poisson/mcmc/%s.RData", rname))
     }
 }
-
