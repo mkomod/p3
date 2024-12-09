@@ -489,7 +489,7 @@ d <- dgp_diag(400, 1000, 5, 2, 0.45, list(model="poisson", corr=0), seed=1)
 m_par = list(family="poisson", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, b_t=1e-3,
 	     mcmc_samples=1e4, burnin=1e3, intercept=TRUE, kp_1=0.10, kp_2=25.0)
 f <- m_spsl(d, m_par)
-f
+f[length(f) - 1]
 
 
 d <- dgp_diag(400, 1000, 5, 3, 1.00, list(model="binomial", corr=0), seed=1)

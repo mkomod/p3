@@ -36,6 +36,7 @@ dg <- list(
     )
 )
 
+
 m <- list(
     # methods
     m=c(
@@ -67,6 +68,6 @@ for (i in DGP)
     for (j in MET) {
 	rname <- sprintf("%d_%d_%d", i, SIM, j)
 	assign(rname, m_run(m$m[[j]], m$p[[j]], setting_parameters, CORES))
-	# save(list=c(rname), file=sprintf("../../rdata/simulations/poisson/mcmc/%s.RData", rname))
+	save(list=c(rname), file=sprintf("../../rdata/simulations/poisson/mcmc/%s.RData", rname))
     }
 }

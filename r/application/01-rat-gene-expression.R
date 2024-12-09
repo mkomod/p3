@@ -7,14 +7,20 @@
 rm(list=ls())
 set.seed(1)
 
+# install.packages("BiocManager")
+BiocManager::install("AnnotationDbi")
+BiocManager::install("rat2302.db")
+
 library(AnnotationDbi) 		# BiocManager::install("AnnotationDbi")
 library(rat2302.db) 		# BiocManager::install("rat2302.db")
 library(splines)
 library(data.table)
-library(SSGL)
+library(SSGL)               # devtools::install_github(repo = "jantonelli111/SSGL")
 library(foreach)
 library(data.table)
 # library(doParallel)
+library(parallel)
+
 
 source("./00-functions.R")
 
@@ -177,13 +183,8 @@ folds = 10
 results = array(NA, dim=c(4, folds, 2))
 models = list(diag_cov=list(), full_cov=list())
 
-# train the models 
-# you can skip this and load the pre-trianed models by calling:
-# 
-# load("../../rdata/application/rat/models_15k.RData")
-#
-
-for (fold in 1:folds) 
+# Use mclapply to parallelize the cross-validation process
+results_list <- mclapply(1:folds, function(fold) 
 {
     xval = cv(nrow(X), fold, folds=10, random_order=FALSE)
     
@@ -198,9 +199,9 @@ for (fold in 1:folds)
     d.train = std(d.train)
 
     f1 = gsvb::gsvb.fit(d.train$y., d.train$X., d.train$groups, intercept=FALSE, 
-			diag_covariance=TRUE, track_elbo=FALSE)
+                        diag_covariance=TRUE, track_elbo=FALSE)
     f2 = gsvb::gsvb.fit(d.train$y., d.train$X., d.train$groups, intercept=FALSE, 
-			diag_covariance=FALSE, track_elbo=FALSE)
+                        diag_covariance=FALSE, track_elbo=FALSE)
 
     # save the models
     models$diag_cov[[fold]] = f1
@@ -213,46 +214,56 @@ for (fold in 1:folds)
     f1$intercept = mean(d.test$y - d.test$X %*% (f1$mu * (f1$g[d.train$groups] > 0.5)))
     f2$intercept = mean(d.test$y - d.test$X %*% (f2$mu * (f2$g[d.train$groups] > 0.5)))
 
+
     # evaluate the model
-    results[1, fold, 1] = mse(d.test$y, 
-	    d.test$X %*% (f1$mu * (f1$g[d.train$groups] > 0.5)) + f1$intercept)
+    fold_results = array(NA, dim=c(4, 2))
+    fold_results[1, 1] = mse(d.test$y, 
+                             d.test$X %*% (f1$mu * (f1$g[d.train$groups] > 0.5)) + f1$intercept)
+    fold_results[1, 2] = mse(d.test$y, 
+                             d.test$X %*% (f2$mu * (f2$g[d.train$groups] > 0.5)) + f2$intercept)
 
-    results[1, fold, 2] = mse(d.test$y, 
-	    d.test$X %*% (f2$mu * (f2$g[d.train$groups] > 0.5)) + f2$intercept)
-
-    results[2, fold, 1] = sum(f1$g > 0.5)
-    results[2, fold, 2] = sum(f2$g > 0.5)
+    fold_results[2, 1] = sum(f1$g > 0.5)
+    fold_results[2, 2] = sum(f2$g > 0.5)
 
     # compute the PP coverage
     f1.pred = gsvb::gsvb.predict(f1, d.test$X)
 
-    results[3, fold, 1] = 
+    fold_results[3, 1] = 
         mean(d.test$y - f1$intercept >= f1.pred$quantiles[1, ] & 
-         d.test$y - f1$intercept <= f1.pred$quantiles[2, ])
+             d.test$y - f1$intercept <= f1.pred$quantiles[2, ])
 
-    results[4, fold, 1] = 
+    fold_results[4, 1] = 
         mean(abs(f1.pred$quantiles[2, ] - f1.pred$quantiles[1, ] ))
-
 
     f2.pred = gsvb::gsvb.predict(f2, d.test$X)
 
-    results[3, fold, 2] = 
+    fold_results[3, 2] = 
         mean(d.test$y - f2$intercept >= f2.pred$quantiles[1, ] & 
-         d.test$y - f2$intercept <= f2.pred$quantiles[2, ])
+             d.test$y - f2$intercept <= f2.pred$quantiles[2, ])
 
-    results[4, fold, 2] = 
+    fold_results[4, 2] = 
         mean(abs(f2.pred$quantiles[2, ] - f2.pred$quantiles[1, ] ))
+
+    return(list(fold_results=fold_results, f1=f1, f2=f2))
+}, mc.cores = 10)
+
+# Combine results from all folds
+for (fold in 1:folds) {
+    results[, fold, ] = results_list[[fold]]$fold_results
+    models$diag_cov[[fold]] = results_list[[fold]]$f1
+    models$full_cov[[fold]] = results_list[[fold]]$f2
 }
 
 
 # Note: we use the exact same mechanism of perfroming X-validation as SSGL
 # the following takes a while to run ~ 12 hours
 # Cross-validation loop to find the optimal value of lambda0 for SSGL
-lambda0_values <- seq(0.1, 10, by=0.5)
+lambda0_values <- seq(0.1, 5.1, by=0.5)
 cv_results <- matrix(NA, nrow=length(lambda0_values), ncol=10)
 
-for (i in seq_along(lambda0_values)) {
+cv_results <- mclapply(seq_along(lambda0_values), function(i) {
     lambda0 <- lambda0_values[i]
+    fold_results <- numeric(10)
     
     for (fold in 1:10) {
         xval <- cv(nrow(X), fold, folds=10, random_order=FALSE)
@@ -267,9 +278,12 @@ for (i in seq_along(lambda0_values)) {
         f.s <- SSGL::SSGL(d.train$y, d.train$X, d.train$groups, family="gaussian",
                           d.test$X, lambda0=lambda0)
 
-        cv_results[i, fold] <- mse(d.test$y, f.s$Y_pred)
+        fold_results[fold] <- mse(d.test$y, f.s$Y_pred)
     }
-}
+    return(fold_results)
+}, mc.cores = 16)
+
+cv_results <- do.call(rbind, cv_results)
 
 # Calculate the mean MSE for each lambda0 value
 mean_mse <- rowMeans(cv_results)
@@ -286,30 +300,27 @@ lambda0 = 1.6
 # note: ssglcv does not provide the models, just the param
 # so to get the model size and which coefficients are important
 # we need to run it again
-ssgl_models = list()
-ssgl_results = matrix(NA, nrow=2, ncol=10)
+ssgl_results <- mclapply(1:10, function(fold) {
+    xval <- cv(nrow(X), fold, folds=10, random_order=FALSE)
+    tr <- xval$train
+    ts <- xval$test
 
-for (fold in 1:10) 
-{
-    xval = cv(nrow(X), fold, folds=10, random_order=FALSE)
-    tr = xval$train
-    ts = xval$test
-
-    d = create_train_test(Y, X, tr, ts)
-    d.train = list(y=d$y_train, X=d$X_train, groups=d$groups)
-    d.test  = list(y=d$y_test, X=d$X_test, groups=d$groups)
+    d <- create_train_test(Y, X, tr, ts)
+    d.train <- list(y=d$y_train, X=d$X_train, groups=d$groups)
+    d.test  <- list(y=d$y_test, X=d$X_test, groups=d$groups)
 
     # standardization happens inside SSGL
-    f.s = SSGL::SSGL(d.train$y, d.train$X, d.train$groups, family="gaussian",
-		     d.test$X, lambda0=lambda0)
+    f.s <- SSGL::SSGL(d.train$y, d.train$X, d.train$groups, family="gaussian",
+                      d.test$X, lambda0=lambda0)
 
-    ssgl_models[[fold]] = f.s
+    mse_value <- mse(d.test$y, f.s$Y_pred)
+    classifications_sum <- sum(f.s$classifications)
 
-    f.s = ssgl_models[[fold]]
+    return(list(model = f.s, mse = mse_value, classifications = classifications_sum))
+}, mc.cores = 10)
 
-    ssgl_results[1, fold] = mse(d.test$y, f.s$Y_pred)
-    ssgl_results[2, fold] = sum(f.s$classifications)
-}
+ssgl_models <- lapply(ssgl_results, function(res) res$model)
+ssgl_results_matrix <- do.call(cbind, lapply(ssgl_results, function(res) c(res$mse, res$classifications)))
 
 # rowMeans(ssgl_results)
 
@@ -318,7 +329,7 @@ save(list=c("models", "ssgl_models"),
      file="../../rdata/application/rat/models_15k.RData")
 
 # save the results
-save(list=c("results", "ssgl_results"), 
+save(list=c("results", "ssgl_results_matrix"), 
      file="../../rdata/application/rat/results.RData")
 
 
@@ -333,7 +344,7 @@ cat(apply(results, c(1, 3), function(x)
 	sprintf("%.4f (%.3f)", mean(x[ ! (is.na(x) | is.nan(x)) ]), 
 			       sd(x[ ! (is.na(x) | is.nan(x)) ]))
 ))
-cat(apply(ssgl_results, 1, function(x) 
+cat(apply(ssgl_results_matrix, 1, function(x) 
 	sprintf("%.4f (%.3f)", mean(x[ ! (is.na(x) | is.nan(x)) ]), 
 			       sd(x[ ! (is.na(x) | is.nan(x)) ]))
 ))
@@ -358,11 +369,29 @@ table(unlist(lapply(ssgl_models, function(f) which(f$classifications != 0)))))
 # 			Fit the models to the full dataset
 # -------------------------------------------------------------------------------
 # standardize the data
+create_train = function(y, X)
+{
+    p = ncol(X)
+    n = nrow(X)
+    m = 3 	# basis expansion size
+    Z = matrix(NA, nrow=n, ncol=m * p)
+
+    for (j in 1:p) {
+        basis = splines::ns(X[ , j], df=m)
+        Z[ , m * (j - 1) + 1:m]  = basis
+    }
+
+    # Package dataset
+    d = list(y=y, X=Z, groups=rep(1:p, each=m), 
+            n=n, M=p, m=m, p=ncol(Z))
+}
+
+d = create_train(Y, X)
 d = std(d)
 
-f.ssgl = SSGL(d$y, d$X, d$X, 1, 100, d$groups)
-f1 = gsvb::gsvb.fit(d$y., d$X., d$groups, intercept=FALSE, diag_covariance=TRUE)
-f2 = gsvb::gsvb.fit(d$y., d$X., d$groups, intercept=FALSE, diag_covariance=FALSE)
+# f.ssgl = SSGL(d$y, d$X, d$groups, family="gaussian", n_lambda0 = 10)
+f1 = gsvb::gsvb.fit(d$y., d$X., d$groups, intercept=FALSE, diag_covariance=TRUE, ordering=2)
+f2 = gsvb::gsvb.fit(d$y., d$X., d$groups, intercept=FALSE, diag_covariance=FALSE, ordering=0)
 
 save(list=c("f1", "f2"), file="../../rdata/application/rat/models_15k_full_gsvb.RData")
 

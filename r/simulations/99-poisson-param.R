@@ -6,13 +6,14 @@ source("./00-functions.R")
 
 
 objective_function <- function(k1, k2) {
-  scores <- numeric(10)
-  for (i in 1:10) {
+  N = 10
+  scores <- numeric(N)
+  for (i in 1:N) {
     tryCatch({
         seed = sample(1:100, 1)
-        d <- dgp_diag(400, 1000, 5, 2, 0.45, list(model="poisson", corr=0.6), seed=seed)
+        d <- dgp_block(400, 1000, 5, 2, 0.45, list(model="poisson", corr=0.6, block_size=50), seed=seed)
         m_par = list(family="poisson", lambda=1, a0=1, b0=1000/5 + 1, a_t=1e-3, b_t=1e-3,
-               mcmc_samples=3e4, burnin=2e3, intercept=FALSE, kp_1=k1, kp_2=k2)
+               mcmc_samples=2e4, burnin=5e3, intercept=FALSE, kp_1=k1, kp_2=k2)
         f <- m_spsl(d, m_par)
         scores[i] <- -f[length(f) - 1]
     }, error = function(e) {
@@ -51,25 +52,19 @@ grid_search <- function(k1_values, k2_values) {
 }
 
 # Define the range of k1 and k2 values for the grid search
-k1_values <- seq(0.020, 0.026, by = 0.001)
-k2_values <- seq(14, 20, by = 1)
-
+k1_values <- seq(0.008, 0.020, by = 0.002)
+k2_values <- seq(24, 32, by = 1)
 length(k1_values) * length(k2_values)
 
 # Perform the grid search
 grid_search_results <- grid_search(k1_values, k2_values)
 
-# 0.02 // 14
-# 
-
 print(grid_search_results)
 sapply(grid_search_results$AllParams, function(x) x$score) > -2
 
 which.max(sapply(grid_search_results$AllParams, function(x) x$score) )
-grid_search_results$AllParams[[1]]
-
-expand.grid(k1_values, k2_values)[47, ]
-grid_search_results$AllParams[[47]]
+expand.grid(k1_values, k2_values)[22, ]
+grid_search_results$AllParams[[57]]
 
 # Create a matrix to store the scores
 score_matrix <- matrix(NA, nrow = length(k1_values), ncol = length(k2_values))
@@ -85,12 +80,12 @@ for (result in grid_search_results$AllParams) {
 
 # Print the score matrix
 print(score_matrix)
-
-grid_search_results$BestScore
-grid_search_results$BestParams
 rowMeans(score_matrix)
 colMeans(score_matrix)
 
+0.022 / 22
 0.02 / 14
 0.024 // 12
 0.02 // 16
+
+

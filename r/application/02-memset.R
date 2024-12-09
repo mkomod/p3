@@ -118,12 +118,8 @@ f.ssgl$class[1] = 1
 f1 = gsvb::gsvb.fit(d$y, d$X., d$groups, family="binomial-jaakkola", lambda=1,
 	    diag_covariance=TRUE, intercept=FALSE, track_elbo=FALSE, niter=1000)
 
-f1. = rescale_fit(f1, d)
-
 f2 = gsvb::gsvb.fit(d$y, d$X., d$groups, family="binomial-jaakkola", lambda=1,
 	    diag_covariance=FALSE, intercept=FALSE, track_elbo=FALSE, niter=1500)
-
-f2. = rescale_fit(f2, d)
 
 # -----------------------------------------------------------------
 #   Save
@@ -136,6 +132,8 @@ save(list=c("cv.glasso", "f.gg",
 # -----------------------------------------------------------------------------
 # 			Plot the norms of the methods
 # -----------------------------------------------------------------------------
+f1. = rescale_fit(f1, d)
+f2. = rescale_fit(f2, d)
 
 q1. = apply(comp.norms(f1., d$groups), 1, quantile, probs=c(0.025, 0.975))
 q2. = apply(comp.norms(f2., d$groups), 1, quantile, probs=c(0.025, 0.975))
@@ -148,7 +146,7 @@ layout(matrix(c(1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4,4,4), ncol=1))
 
 # GSVB-D
 par(mar=c(0, 4, 0.1, 1), family="Times")
-plot.norms(f1.$beta, groups, ylim=c(0, 18.0), pch=20, xaxt="n", las=1,
+plot.norms(f1.$beta, groups, ylim=c(0, 25.0), pch=20, xaxt="n", las=1,
 	   col=ifelse(f1.$g > 0.5, 1, "lightgrey"), ylab="GSVB-D")
 arrows((1:max(groups)) * (-1)^((f1.$g > 0.5) - 1), q1.[1, ], y1=q1.[2, ], 
        code=0, col=1, lwd=2)
@@ -158,7 +156,7 @@ grid(nx=0, ny=5)
 
 # GSVB-B
 par(mar=c(0, 4, 0, 1))
-plot.norms(f2.$beta, groups, ylim=c(0, 230), pch=20, xaxt="n", las=1,
+plot.norms(f2.$beta, groups, ylim=c(0, 75), pch=20, xaxt="n", las=1,
 	   col=ifelse(f2.$g > 0.5, 1, "lightgrey"), ylab="GSVB-B")
 arrows((1:max(groups)) * (-1)^((f2.$g > 0.5) - 1), 
        q2.[1, ], y1=q2.[2, ], code=0, col=1, lwd=2)
@@ -270,12 +268,14 @@ for (fold in 1:10)
 }
 
 apply(results, c(1, 3), function(x) {
-	for (i in x)
-	    sprintf("%.3f (%.3f)", mean(x), sd(x)) 
+    mean_x <- mean(x)
+    sd_x <- sd(x)
+    sprintf("%.3f (%.3f)", mean_x, sd_x)
 })
 t(round(apply(results, c(1,3), mean), 3))
 t(round(apply(results, c(1,3), sd), 4))
 
+taus = seq(0.01, 0.99, by=0.01)
 max(sapply(taus, function(tau) cor(d.test$y, glas.pred > tau)))
 max(sapply(taus, function(tau) cor(d.test$y, ssgl.pred > tau)))
 max(sapply(taus, function(tau) cor(d.test$y, gsvb.d.pred > tau))) 
