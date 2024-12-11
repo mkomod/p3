@@ -67,17 +67,17 @@ get_data <- function(family, methods, n, p, g, s, metrics,
 		    x = cbind(x, tobind)
 		}
 
-		if ("max_psrf" %in% colnames(x)) {
-		    tokeep = x[, "max_psrf"] <= max_psrf
-		    cat(dtype, " - ", sim, " : ", sum(!tokeep), "\n")
-		    x[!tokeep, metrics] = NA
-		}
-
-		# if ("mpsrf" %in% colnames(x)) {
-		#     tokeep = x[, "mpsrf"] <= max_psrf
+		# if ("max_psrf" %in% colnames(x)) {
+		#     tokeep = x[, "max_psrf"] <= max_psrf
 		#     cat(dtype, " - ", sim, " : ", sum(!tokeep), "\n")
 		#     x[!tokeep, metrics] = NA
 		# }
+
+		if ("mpsrf" %in% colnames(x)) {
+		    tokeep = x[, "mpsrf"] <= max_psrf
+		    cat(dtype, " - ", sim, " : ", sum(!tokeep), "\n")
+		    x[!tokeep, metrics] = NA
+		}
 
 		tobind <- cbind(d=dtype, n=n[sim], p=p[sim], g=g[sim], 
 				s=s[sim], m=meth, x[ , metrics])
@@ -277,8 +277,8 @@ dat <- get_data("gaussian/mcmc",
 		dgp=c(1, 2, 3, 4),
 		simnum=1:2, 
 		make.table=T,
-		make.plot=F,
-		# fname="../figs/gaus_mcmc_1_up.pdf",
+		make.plot=T,
+		fname="../figs/gaus_mcmc_1_up.pdf",
 		max_psrf=1.10,
 		method.names=c("GSVB-D", "GSVB-B", "MCMC", "SSGL"),
 		method.cols=adjustcolor(color_palette[c(1,2,3,4)], 0.5),
@@ -294,7 +294,7 @@ p <- c(1e3, 1e3, 1e3, 1e3)
 g <- c(5,   5,   10,  10 )
 s <- c(5,   10,  5,   10 )
 dat <- get_data("gaussian/mcmc", 
-		1:4, 
+		3, 
 		n, p, g, s,
 		# metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero", "elapsed"),
 		# metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
@@ -302,7 +302,7 @@ dat <- get_data("gaussian/mcmc",
 		dgp=c(1, 2, 3, 4),
 		simnum=1:2, 
 		make.table=T,
-		make.plot=T,
+		make.plot=F,
 		# fname="../figs/gaus_mcmc_1_up.pdf",
 		max_psrf=3.5,
 		method.names=c("GSVB-D", "GSVB-B", "MCMC", "SSGL"),
@@ -367,12 +367,12 @@ color_palette = c("#4DAF4A", "#E41A1C", "#377EB8", "#FF7F00")
 dat <- get_data("binomial/mcmc", 
 		2:4, 
 		n, p, g, s,
-		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero", "elapsed"),
+		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"),
 		dgp=2:4, 
 		simnum=1,
 		make.table=TRUE,
-		make.plot=FALSE,
-		# fname="../figs/binom_mcmc_1.pdf",
+		make.plot=TRUE,
+		fname="../figs/binom_mcmc_1.pdf",
 		method.names=c("GSVB-D-J", "GSVB-B", "GSVB-D", "MCMC"),
 		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
 		max_psrf=1.10,
@@ -382,7 +382,23 @@ dat <- get_data("binomial/mcmc",
 		#     latex2exp::TeX("Lenght $\\beta_0 \\neq 0$"))
 )
 
-
+dat <- get_data("binomial/mcmc", 
+		4, 
+		n, p, g, s,
+		metrics=c("elapsed", "elapsed"),
+		dgp=2:4, 
+		simnum=1,
+		make.table=TRUE,
+		make.plot=F,
+		# fname="../figs/binom_mcmc_1.pdf",
+		method.names=c("GSVB-D-J", "GSVB-B", "GSVB-D", "MCMC"),
+		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
+		max_psrf=1.10,
+		metric.title=c("", "", "")
+		# metric.title=c(latex2exp::TeX("$l_2$-error"), "AUC",
+		#     latex2exp::TeX("Coverage $\\beta_0 \\neq 0$"),
+		#     latex2exp::TeX("Lenght $\\beta_0 \\neq 0$"))
+)
 
 
 
@@ -455,9 +471,9 @@ dat <- get_data("poisson/mcmc",
 		metrics=c("l2", "auc", "coverage.non_zero", "length.non_zero"), 
 		dgp=1:4, 
 		simnum=1,
-		max_psrf=4.50,
+		max_psrf=1.70,
 		make.table=TRUE,
-		# make.plot=TRUE,
+		make.plot=TRUE,
 		# fname="../figs/pois_mcmc_1.pdf",
 		method.names=c("GSVB-D", "GSVB-D", "MCMC"),
 		method.cols=adjustcolor(color_palette[c(1,2,4)], 0.5),
@@ -476,7 +492,7 @@ dat <- get_data("poisson/mcmc",
 		metrics=c("elapsed", "elapsed"), 
 		dgp=1:4, 
 		simnum=1,
-		max_psrf=1.10,
+		max_psrf=3.00,
 		make.table=T,
 		# fname="../figs/pois_mcmc_1.pdf",
 		method.names=c("GSVB-D", "GSVB-D", "MCMC"),
